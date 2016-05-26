@@ -4,4 +4,6 @@
     <string name="edit_text_title_hint">Title</string>
     <string name="edit_text_commentary_hint">Description</string>
     <string name="enter_title_and_commentary">Enter title and desctiption</string>
+    <string name="cancel_button_text">Cancel</string>
+    <string name="save_button_text">Save</string>
 </resources>

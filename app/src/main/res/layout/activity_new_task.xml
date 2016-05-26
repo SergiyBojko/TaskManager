@@ -39,7 +39,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_margin="@dimen/button_margin"
-            android:text="Cancel"/>
+            android:text="@string/cancel_button_text"/>
 
         <Button
             android:id="@+id/save_button"
@@ -47,7 +47,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_margin="@dimen/button_margin"
-            android:text="Save"/>
+            android:text="@string/save_button_text"/>
 
     </LinearLayout>
 
