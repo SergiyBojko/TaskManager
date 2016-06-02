@@ -6,4 +6,6 @@
     <string name="enter_title_and_commentary">Enter title and desctiption</string>
     <string name="cancel_button_text">Cancel</string>
     <string name="save_button_text">Save</string>
+    <string name="dummy_text">dummy text</string>
+    <string name="enter_title">Title may not be empty</string>
 </resources>
