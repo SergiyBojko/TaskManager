@@ -6,6 +6,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -15,7 +16,6 @@ import android.widget.ListView;
 
 import com.serhiyboiko.taskmanager.R;
 import com.serhiyboiko.taskmanager.adapter.TaskListAdapter;
-import com.serhiyboiko.taskmanager.utils.json.JsonDeserializer;
 import com.serhiyboiko.taskmanager.utils.json.JsonSerializer;
 import com.serhiyboiko.taskmanager.model.Task;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsDeserializer;
@@ -89,17 +89,17 @@ public class TaskListActivity extends AppCompatActivity{
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Task item = mTaskListArray.get(position);
-                if (item.getTaskStart() == null){
+                if (item.getTaskStart() == null) {
                     item.setTaskStart(new GregorianCalendar());
                 } else {
-                    if (item.getTaskEnd() == null){
+                    if (item.getTaskEnd() == null) {
                         item.setTaskEnd(new GregorianCalendar());
                         long elapsedTimeInMills = item.getTaskEnd().getTimeInMillis() - item.getTaskStart().getTimeInMillis();
                         item.setTimeSpend(elapsedTimeInMills);
-                        int hours = (int)TimeUnit.MILLISECONDS.toHours(elapsedTimeInMills);
-                        int minutes = (int)(TimeUnit.MILLISECONDS.toMinutes(elapsedTimeInMills) -
+                        int hours = (int) TimeUnit.MILLISECONDS.toHours(elapsedTimeInMills);
+                        int minutes = (int) (TimeUnit.MILLISECONDS.toMinutes(elapsedTimeInMills) -
                                 TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(elapsedTimeInMills)));
-                        int seconds = (int)(TimeUnit.MILLISECONDS.toSeconds(elapsedTimeInMills) -
+                        int seconds = (int) (TimeUnit.MILLISECONDS.toSeconds(elapsedTimeInMills) -
                                 TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(elapsedTimeInMills)));
                         Snackbar.make(findViewById(R.id.task_list_activity_container),
                                 String.format(TASK_FINISHED_IN, hours, minutes, seconds), Snackbar.LENGTH_SHORT).show();
@@ -111,6 +111,9 @@ public class TaskListActivity extends AppCompatActivity{
                 updateData();
             }
         });
+
+        registerForContextMenu(mTaskListView);
+        /*
         mTaskListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
@@ -122,6 +125,7 @@ public class TaskListActivity extends AppCompatActivity{
                 return true;
             }
         });
+        */
     }
 
     //bind references to widgets
@@ -133,7 +137,7 @@ public class TaskListActivity extends AppCompatActivity{
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu, menu);
+        getMenuInflater().inflate(R.menu.main_menu, menu);
         return true;
     }
 
@@ -242,8 +246,47 @@ public class TaskListActivity extends AppCompatActivity{
         }
     }
 
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        getMenuInflater().inflate(R.menu.task_list_context_menu, menu);
+        int position = ((AdapterView.AdapterContextMenuInfo)menuInfo).position;
+        Task selectedTask = mTaskListArray.get(position);
+        if(selectedTask.getTaskStart() == null){
+            menu.getItem(1).setEnabled(false);
+        } else {
+            menu.getItem(1).setEnabled(true);
+        }
+    }
 
 
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+
+        int id = item.getItemId();
+        int position = ((AdapterView.AdapterContextMenuInfo)item.getMenuInfo()).position;
+        switch (id){
+            case R.id.context_menu_edit:
+                Intent intent = new Intent(TaskListActivity.this, EditTaskActivity.class);
+                intent.putExtra(ITEM_ID_EXTRA, position);
+                intent.putExtra(TITLE_EXTRA, mTaskListArray.get(position).getTitle());
+                intent.putExtra(COMMENTARY_EXTRA, mTaskListArray.get(position).getCommentary());
+                startActivityForResult(intent, EDIT_TASK);
+                return true;
+            case R.id.context_menu_restart:
+                Task selectedTask = mTaskListArray.get(position);
+                selectedTask.setTaskStart(new GregorianCalendar());
+                selectedTask.setTaskEnd(null);
+                updateData();
+                return true;
+            case R.id.context_menu_delete:
+                mTaskListArray.remove(position);
+                updateData();
+                return true;
+            default:
+                return super.onContextItemSelected(item);
+        }
+    }
 
     public void onSaveInstanceState(Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);

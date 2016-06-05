@@ -6,11 +6,11 @@
         android:id="@+id/menu_fill"
         android:icon="@drawable/ic_refresh_white_24dp"
         app:showAsAction="always"
-        android:title="Edit profile" />
+        android:title="@string/menu_fill_title" />
 
     <item
         android:id="@+id/menu_remove_all"
         android:icon="@drawable/ic_delete_white_24dp"
         app:showAsAction="always"
-        android:title="Search" />
+        android:title="@string/menu_remove_all_title" />
 </menu>
