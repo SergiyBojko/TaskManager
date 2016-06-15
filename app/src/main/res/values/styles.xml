@@ -1,18 +1,10 @@
 <resources>
-
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:buttonStyle">@style/buttonStyle</item>
-    </style>
-
-    <style name="buttonStyle">
-        <item name="android:textSize">15dp</item>
-        <item name="android:textColor">#D0FFFFFF</item>
-        <item name="android:textStyle">bold</item>
+        <item name="android:itemBackground">@color/menu_item_background</item>
     </style>
 
 </resources>

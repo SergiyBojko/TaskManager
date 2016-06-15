@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:color="@color/cancelButtonPressed"
-        android:drawable="@color/cancelButtonPressed"
+        android:color="@color/toolbarActionPressed"
+        android:drawable="@color/toolbarActionPressed"
         android:state_pressed="true"/>
     <item
-        android:color="@color/cancelButtonPressed"
-        android:drawable="@color/cancelButtonPressed"
+        android:color="@color/toolbarActionPressed"
+        android:drawable="@color/toolbarActionPressed"
         android:state_focused="true"/>
     <item
-        android:color="@color/cancelButton"
-        android:drawable="@color/cancelButton"
+        android:color="@color/colorPrimary"
+        android:drawable="@color/colorPrimary"
 
         android:state_enabled="true"
         android:state_focused="false"

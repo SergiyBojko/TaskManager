@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#9fa8da</color>
+    <color name="toolbarActionPressed">#a8afd6</color>
     <color name="colorPrimaryDark">#7986cb</color>
     <color name="colorAccent">#f48fb1</color>
-
-    <color name="cancelButton">#ef9a9a</color>
-    <color name="cancelButtonPressed">#e57373</color>
-
-    <color name="taskIdle">#e57373</color>
-    <color name="taskStarted">#e57373</color>
-    <color name="taskFinished">#e57373</color>
+    <color name="colorAccentDark">#f06292</color>
     <color name="white">#FFFFFFFF</color>
-
+    <color name="idle_task_background_color_default">#ffffdddd</color>
+    <color name="started_task_background_color_default">#ffffffcc</color>
+    <color name="finished_task_background_color_default">#ffddffdd</color>
 </resources>

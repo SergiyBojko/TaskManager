@@ -2,14 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/context_menu_edit"
-        android:title="@string/context_menu_edit_title" />
+        android:title="@string/context_menu_edit_title"/>
 
     <item
         android:id="@+id/context_menu_restart"
-        android:title="@string/context_menu_restart_title" />
+        android:title="@string/context_menu_restart_title"/>
 
     <item
         android:id="@+id/context_menu_delete"
-        android:title="@string/context_menu_delete_title" />
+        android:title="@string/context_menu_delete_title"/>
 
 </menu>

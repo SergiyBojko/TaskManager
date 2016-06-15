@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/menu_new_task"
+        app:showAsAction="always"
+        android:icon="@drawable/ic_note_add_white_24dp"
+        android:title="@string/menu_new_task"/>
+
+    <item
+        android:id="@+id/menu_sort"
+        app:showAsAction="always"
+        android:icon="@drawable/ic_sort_white_24dp"
+        android:title="@string/menu_sort">
+        <menu>
+            <group
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/menu_sort_az"
+                    android:title="@string/menu_sort_az"/>
+                <item
+                    android:id="@+id/menu_sort_za"
+                    android:title="@string/menu_sort_za"/>
+                <item
+                    android:id="@+id/menu_sort_new_old"
+                    android:title="@string/menu_sort_new_old"/>
+                <item
+                    android:id="@+id/menu_sort_old_new"
+                    android:title="@string/menu_sort_old_new"/>
+            </group>
+
+        </menu>
+    </item>
+
+
+    <item
+        android:id="@+id/menu_fill"
+        app:showAsAction="never"
+        android:title="@string/menu_fill_title"/>
+
+    <item
+        android:id="@+id/menu_remove_all"
+        android:icon="@drawable/ic_delete_white_24dp"
+        app:showAsAction="never"
+        android:title="@string/menu_remove_all_title"/>
+    <item
+        android:id="@+id/menu_settings"
+        app:showAsAction="always"
+        android:icon="@drawable/ic_settings_white_24dp"
+        android:title="@string/menu_settings"/>
+    <item
+        android:id="@+id/menu_exit"
+        app:showAsAction="never"
+        android:title="@string/menu_exit"/>
+
+</menu>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="@string/pref_task_colors_title">
+        <Preference
+            android:key="idle_task_background_color"
+            android:title="@string/pref_idle_task_color"/>
+        <Preference
+            android:key="started_task_background_color"
+            android:title="@string/pref_started_task_color"/>
+        <Preference
+            android:key="finished_task_background_color"
+            android:title="@string/pref_finished_task_color"/>
+        <Preference
+            android:key="restore_defaults"
+            android:title="@string/pref_restore_default_colors"/>
+    </PreferenceCategory>
+</PreferenceScreen>

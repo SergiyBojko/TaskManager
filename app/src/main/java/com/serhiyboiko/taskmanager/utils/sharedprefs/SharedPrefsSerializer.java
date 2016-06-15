@@ -2,38 +2,49 @@ package com.serhiyboiko.taskmanager.utils.sharedprefs;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.reflect.TypeToken;
 import com.serhiyboiko.taskmanager.model.Task;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * Created by Amegar on 03.06.2016.
  */
 public class SharedPrefsSerializer {
     private Context mContext;
-    private String mFilename;
 
-    final static String LIST_SIZE = "list_size";
+    final static String TASK_JSON_ARRAY = "task_json_array";
+    final static String SORTING_TYPE = "sorting_type";
 
-    public SharedPrefsSerializer (Context context, String filename){
+
+    public SharedPrefsSerializer (Context context){
         mContext = context;
-        mFilename = filename;
     }
 
-    public void saveTaskListToSharedPrefs (ArrayList<Task> taskList){
-        SharedPreferences sharedPreferences = mContext.getSharedPreferences(mFilename, Context.MODE_PRIVATE);
+    public void saveTaskList(ArrayList<Task> taskList){
+        Gson gson = new Gson();
+        Type taskListType = new TypeToken<Collection<Task>>() {}.getType();
+        String taskListJson = gson.toJson(taskList, taskListType);
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        int listSize = taskList.size();
-        editor.putInt(LIST_SIZE, listSize);
-        for (int i = 0; i<listSize; i++){
-            Task item = taskList.get(i);
-            item.saveInSharedPrefs(editor, i);
-        }
+        editor.putString(TASK_JSON_ARRAY, taskListJson);
         editor.commit();
-
     }
 
+    public void saveSorting (int sortingId){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(SORTING_TYPE, sortingId);
+        editor.commit();
+    }
 
 }

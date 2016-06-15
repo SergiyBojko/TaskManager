@@ -5,4 +5,12 @@
     <dimen name="button_margin">5dp</dimen>
     <dimen name="list_item_padding">3dp</dimen>
     <dimen name="item_time_text_size">10sp</dimen>
+    <dimen name="task_editor_edit_text_top_margin">100dp</dimen>
+    <dimen name="toolbar_action_view_padding_left">4dp</dimen>
+    <dimen name="toolbar_action_view_padding_right">8dp</dimen>
+    <dimen name="toolbar_action_margin">3dp</dimen>
+    <dimen name="toolbar_action_view_padding_top_bottom">8dp</dimen>
+    <dimen name="menu_action_view_text_size">18sp</dimen>
+    <dimen name="fab_margin">16dp</dimen>
+    <dimen name="edit_text_margin_top">16dp</dimen>
 </resources>

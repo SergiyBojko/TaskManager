@@ -8,6 +8,7 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Comparator;
 import java.util.GregorianCalendar;
 
 public class Task implements Parcelable{
@@ -33,45 +34,6 @@ public class Task implements Parcelable{
         mTitle = title;
         mCommentary = commentary;
         Log.i("created new item", this.toString());
-    }
-
-    public Task(JSONObject json){
-        long startTimeInMills, endTimeInMills, elapsedTimeInMills = 0;
-        try {
-            mTitle = json.getString(TITLE);
-            mCommentary = json.getString(COMMENTARY);
-            startTimeInMills = json.getLong(START_DATE);
-            if (startTimeInMills != CALENDAR_EMPTY){
-                mTaskStart = new GregorianCalendar();
-                mTaskStart.setTimeInMillis(startTimeInMills);
-                endTimeInMills = json.getLong(END_DATE);
-                if (endTimeInMills != CALENDAR_EMPTY){
-                    mTaskEnd = new GregorianCalendar();
-                    mTaskEnd.setTimeInMillis(endTimeInMills);
-                    mTimeSpend = json.getLong(ELAPSED_TIME);
-                }
-            }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public Task(SharedPreferences sp, int index){
-        long startTimeInMills, endTimeInMills, elapsedTimeInMills = 0;
-        mTitle = sp.getString(TITLE + index, "");
-        mCommentary = sp.getString(COMMENTARY + index, "");
-        startTimeInMills = sp.getLong(START_DATE + index, CALENDAR_EMPTY);
-        if (startTimeInMills != CALENDAR_EMPTY) {
-            mTaskStart = new GregorianCalendar();
-            mTaskStart.setTimeInMillis(startTimeInMills);
-            endTimeInMills = sp.getLong(END_DATE + index, CALENDAR_EMPTY);
-            if (endTimeInMills != CALENDAR_EMPTY){
-                mTaskEnd = new GregorianCalendar();
-                mTaskEnd.setTimeInMillis(endTimeInMills);
-                mTimeSpend = sp.getLong(ELAPSED_TIME + index, CALENDAR_EMPTY);
-            }
-        }
-
     }
 
     private Task(Parcel parcel) {
@@ -173,54 +135,92 @@ public class Task implements Parcelable{
         }
     };
 
-    public JSONObject createJson (){
-        JSONObject jsonObject = new JSONObject();
-        long startTimeInMills = CALENDAR_EMPTY;
-        long endTimeInMills = CALENDAR_EMPTY;
-        long elapsedTime = CALENDAR_EMPTY;
-        if (mTaskStart != null){
-            startTimeInMills = mTaskStart.getTimeInMillis();
-            if (mTaskEnd != null){
-                endTimeInMills = mTaskEnd.getTimeInMillis();
-                elapsedTime = mTimeSpend;
-            }
-        }
-        try {
-            jsonObject.put(TITLE, mTitle);
-            jsonObject.put(COMMENTARY, mCommentary);
-            jsonObject.put(START_DATE, startTimeInMills);
-            jsonObject.put(END_DATE, endTimeInMills);
-            jsonObject.put(ELAPSED_TIME, elapsedTime);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        return jsonObject;
-    }
-
-    public void saveInSharedPrefs(SharedPreferences.Editor editor, int i) {
-        long startTimeInMills = CALENDAR_EMPTY;
-        long endTimeInMills = CALENDAR_EMPTY;
-        long elapsedTime = CALENDAR_EMPTY;
-
-        if(mTaskStart != null){
-            startTimeInMills = mTaskStart.getTimeInMillis();
-
-            if(mTaskEnd != null){
-                endTimeInMills = mTaskEnd.getTimeInMillis();
-                elapsedTime = mTimeSpend;
-            } else {
-            }
-        }
-        editor.putString(TITLE + i, mTitle);
-        editor.putString(COMMENTARY + i, mCommentary);
-        editor.putLong(START_DATE + i, startTimeInMills);
-        editor.putLong(END_DATE + i, endTimeInMills);
-        editor.putLong(ELAPSED_TIME + i, elapsedTime);
-    }
-
     @Override
     public String toString() {
         return mTitle + " " + mCommentary + " " +  mTaskStart + " " +  mTaskEnd;
+    }
+
+    public static class ComparatorAZ implements Comparator<Task>{
+
+        @Override
+        public int compare(Task lhs, Task rhs) {
+            int comparison = lhs.getTitle().toLowerCase().compareTo(rhs.getTitle().toLowerCase());
+            if (comparison != 0){
+                return comparison;
+            }
+            GregorianCalendar lhsStart = lhs.getTaskStart();
+            GregorianCalendar rhsStart = rhs.getTaskStart();
+            if(lhsStart != null && rhsStart != null){
+                comparison = (int)(rhsStart.getTimeInMillis() - lhsStart.getTimeInMillis());
+            } else {
+                if (lhsStart == null & rhsStart == null) return 0;
+                if (rhsStart == null) return -1;
+                if (lhsStart == null) return 1;
+            }
+            return comparison;
+        }
+    }
+
+    public static class ComparatorZA implements Comparator<Task>{
+
+        @Override
+        public int compare(Task lhs, Task rhs) {
+            int comparison = rhs.getTitle().toLowerCase().compareTo(lhs.getTitle().toLowerCase());
+            if (comparison != 0){
+                return comparison;
+            }
+            GregorianCalendar lhsStart = lhs.getTaskStart();
+            GregorianCalendar rhsStart = rhs.getTaskStart();
+            if(lhsStart != null && rhsStart != null){
+                comparison = (int)(rhsStart.getTimeInMillis() - lhsStart.getTimeInMillis());
+            } else {
+                if (lhsStart == null & rhsStart == null) return 0;
+                if (rhsStart == null) return -1;
+                if (lhsStart == null) return 1;
+            }
+            return comparison;
+        }
+    }
+
+    public static class ComparatorNewerOlder implements Comparator<Task>{
+
+        @Override
+        public int compare(Task lhs, Task rhs) {
+            int comparison = 0;
+            GregorianCalendar lhsStart = lhs.getTaskStart();
+            GregorianCalendar rhsStart = rhs.getTaskStart();
+            if(lhsStart != null && rhsStart != null){
+                comparison = (int)(rhsStart.getTimeInMillis() - lhsStart.getTimeInMillis());
+            } else {
+                if (rhsStart == null) comparison += -1;
+                if (lhsStart == null) comparison += 1;
+            }
+            if (comparison != 0){
+                return comparison;
+            }
+            comparison = lhs.getTitle().toLowerCase().compareTo(rhs.getTitle().toLowerCase());
+            return comparison;
+        }
+    }
+
+    public static class ComparatorOlderNewer implements Comparator<Task>{
+
+        @Override
+        public int compare(Task lhs, Task rhs) {
+            int comparison = 0;
+            GregorianCalendar lhsStart = lhs.getTaskStart();
+            GregorianCalendar rhsStart = rhs.getTaskStart();
+            if(lhsStart != null && rhsStart != null){
+                comparison = (int)(lhsStart.getTimeInMillis() - rhsStart.getTimeInMillis());
+            } else {
+                if (rhsStart == null) comparison += -1;
+                if (lhsStart == null) comparison += 1;
+            }
+            if (comparison != 0){
+                return comparison;
+            }
+            comparison = lhs.getTitle().toLowerCase().compareTo(rhs.getTitle().toLowerCase());
+            return comparison;
+        }
     }
 }

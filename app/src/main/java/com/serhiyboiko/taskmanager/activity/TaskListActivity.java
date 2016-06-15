@@ -1,88 +1,114 @@
 package com.serhiyboiko.taskmanager.activity;
 
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.Handler;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.ListView;
 
 import com.serhiyboiko.taskmanager.R;
 import com.serhiyboiko.taskmanager.adapter.TaskListAdapter;
-import com.serhiyboiko.taskmanager.utils.json.JsonSerializer;
+import com.serhiyboiko.taskmanager.dialog.MaterialDialogFragment;
 import com.serhiyboiko.taskmanager.model.Task;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsDeserializer;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsSerializer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.concurrent.TimeUnit;
 
-public class TaskListActivity extends AppCompatActivity{
+public class TaskListActivity extends AppCompatActivity implements MaterialDialogFragment.DialogListener {
+
 
 
     private ListView mTaskListView;
-    private Button mNewTaskButton;
+    private FloatingActionButton mNewTaskButton;
     private ArrayList<Task> mTaskListArray;
     private TaskListAdapter mTaskListAdapter;
-    private JsonSerializer mJsonSerializer;
     private SharedPrefsSerializer mSharedPrefsSerializer;
+    private int[] mBackgroundColors;
+    private boolean mBackPressed;
+    private Handler mHandler;
+    private Runnable mRunnable;
 
-    static final int CREATE_NEW_TASK = 1;
-    static final int EDIT_TASK = 2;
+    private static final int CREATE_NEW_TASK_REQUEST = 1;
+    private static final int EDIT_TASK_REQUEST = 2;
+    private static final int SETTINGS_REQUEST = 3;
 
-    static final String SAVED_TASK_LIST = "task_list";
-    static final String ITEM_ID_EXTRA = "item_id";
+    final static String SAVED_TASK_LIST = "task_list";
+    final static String ITEM_ID_EXTRA = "item_id";
     final static String TITLE_EXTRA = "title";
     final static String COMMENTARY_EXTRA = "commentary";
 
-    public static final String TASK_FINISHED_IN = "Task finished in %02d:%02d:%02d";
-    public static final String TASK_FINISHED = "Task finished";
-    public static final String JSON_TASK_LIST_FILE_NAME = "task_list.json";
-    public static final String SHARED_PREFS_TASK_LIST_FILE_NAME = "task_list.sharedprefs";
+    private final static String HH_MM_SS = " %02d:%02d:%02d";
+    private SharedPrefsDeserializer mSharedPrefsDeserializer;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_task_list);
+        setContentView(R.layout.task_list_activity);
         bindActivity();
+        getSupportActionBar().setTitle(R.string.task_list_activity_title);
+
+        mSharedPrefsDeserializer = new SharedPrefsDeserializer(this);
+        mSharedPrefsSerializer = new SharedPrefsSerializer(this);
+
         mTaskListArray = new ArrayList<>();
-        mTaskListAdapter = new TaskListAdapter(mTaskListArray, getLayoutInflater());
+        mBackgroundColors = mSharedPrefsDeserializer.getTaskBackgroundColors();
+        mTaskListAdapter = new TaskListAdapter(mTaskListArray, mBackgroundColors, this);
         if (savedInstanceState != null){
-            mTaskListArray.addAll((ArrayList<Task>)savedInstanceState.get(SAVED_TASK_LIST));
+            mTaskListArray.addAll((ArrayList<Task>) savedInstanceState.get(SAVED_TASK_LIST));
             mTaskListAdapter.notifyDataSetChanged();
-            Log.i("mTaskListArray", mTaskListArray.toString());
         } else {
-            new Handler().post(new Runnable() {
+            new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    // load data from JSON file
-                    //mTaskListArray.addAll(new JsonDeserializer(TaskListActivity.this, JSON_TASK_LIST_FILE_NAME).getTaskListFromJson());
+                    mTaskListArray.addAll(mSharedPrefsDeserializer.getTaskList());
+                    int currentSortingId = mSharedPrefsDeserializer.getListSorting();
+                    switch (currentSortingId){
+                        case R.id.menu_sort_az:
+                            Collections.sort(mTaskListArray, new Task.ComparatorAZ());
+                            break;
+                        case R.id.menu_sort_za:
+                            Collections.sort(mTaskListArray, new Task.ComparatorZA());
+                            break;
+                        case R.id.menu_sort_new_old:
+                            Collections.sort(mTaskListArray, new Task.ComparatorNewerOlder());
+                            break;
+                        case R.id.menu_sort_old_new:
+                            Collections.sort(mTaskListArray, new Task.ComparatorOlderNewer());
+                            break;
+                    }
 
+                    //Чи тут краще AsyncTask використовувати?
+                    mTaskListView.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            mTaskListAdapter.notifyDataSetChanged();
+                        }
+                    });
 
-                    mTaskListArray.addAll(new SharedPrefsDeserializer(TaskListActivity.this, SHARED_PREFS_TASK_LIST_FILE_NAME).getTaskListFromSharedPrefs());
-                    mTaskListAdapter.notifyDataSetChanged();
-                    Log.i("mTaskListArray", mTaskListArray.toString());
-            }
-            });
-       }
-
+                }
+            }).start();
+        }
         mTaskListView.setAdapter(mTaskListAdapter);
-        mJsonSerializer = new JsonSerializer(this, JSON_TASK_LIST_FILE_NAME);
-        mSharedPrefsSerializer = new SharedPrefsSerializer(this, SHARED_PREFS_TASK_LIST_FILE_NAME);
 
         mNewTaskButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivityForResult(new Intent(TaskListActivity.this, NewTaskActivity.class), CREATE_NEW_TASK);
+                startActivityForResult(new Intent(TaskListActivity.this, NewTaskActivity.class), CREATE_NEW_TASK_REQUEST);
             }
         });
         mTaskListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -102,107 +128,166 @@ public class TaskListActivity extends AppCompatActivity{
                         int seconds = (int) (TimeUnit.MILLISECONDS.toSeconds(elapsedTimeInMills) -
                                 TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(elapsedTimeInMills)));
                         Snackbar.make(findViewById(R.id.task_list_activity_container),
-                                String.format(TASK_FINISHED_IN, hours, minutes, seconds), Snackbar.LENGTH_SHORT).show();
+                                getString(R.string.task_finished_in) + String.format(HH_MM_SS, hours, minutes, seconds), Snackbar.LENGTH_SHORT).show();
                     } else {
                         Snackbar.make(findViewById(R.id.task_list_activity_container),
-                                TASK_FINISHED, Snackbar.LENGTH_SHORT).show();
+                                getString(R.string.task_finished), Snackbar.LENGTH_SHORT).show();
                     }
                 }
                 updateData();
             }
         });
 
-        registerForContextMenu(mTaskListView);
-        /*
-        mTaskListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+        mTaskListView.setOnScrollListener(new AbsListView.OnScrollListener() {
+            private int mPreviousFirstVisibleItem;
             @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent intent = new Intent(TaskListActivity.this, EditTaskActivity.class);
-                intent.putExtra(ITEM_ID_EXTRA, position);
-                intent.putExtra(TITLE_EXTRA, mTaskListArray.get(position).getTitle());
-                intent.putExtra(COMMENTARY_EXTRA, mTaskListArray.get(position).getCommentary());
-                startActivityForResult(intent, EDIT_TASK);
-                return true;
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+
+            }
+
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+                if (mNewTaskButton.getVisibility() == View.VISIBLE && mPreviousFirstVisibleItem<firstVisibleItem){
+                    mNewTaskButton.hide();
+
+                }
+                if (mNewTaskButton.getVisibility() == View.GONE && mPreviousFirstVisibleItem>firstVisibleItem){
+                    mNewTaskButton.show();
+                }
+                mPreviousFirstVisibleItem = firstVisibleItem;
             }
         });
-        */
+
+        registerForContextMenu(mTaskListView);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if(mHandler != null){
+            mHandler.removeCallbacks(mRunnable);
+        }
+        super.onDestroy();
     }
 
     //bind references to widgets
     private void bindActivity (){
         mTaskListView = (ListView)findViewById(R.id.task_list);
-        mNewTaskButton =(Button)findViewById(R.id.new_task_button);
-
+        mNewTaskButton =(FloatingActionButton)findViewById(R.id.new_task_button);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_menu, menu);
+        getMenuInflater().inflate(R.menu.lask_list_menu, menu);
+        int sortingId = mSharedPrefsDeserializer.getListSorting();
+        switch (sortingId) {
+            case R.id.menu_sort_az:
+            case R.id.menu_sort_za:
+            case R.id.menu_sort_new_old:
+            case R.id.menu_sort_old_new:
+                menu.findItem(sortingId).setChecked(true);
+                return true;
+        }
         return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
         switch (itemId){
-            case R.id.menu_fill:
-                int listViewHeight = mTaskListView.getHeight();
-                int index = 0 + mTaskListAdapter.getCount();
-                int contentHeight = 0;
-                int lineAmount = 0;
-                for (int i = 0; i<index; i++){
-                    View oldItem = mTaskListAdapter.getView(i, null, mTaskListView);
-                    oldItem.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-                    contentHeight += oldItem.getMeasuredHeight();
-                    Log.i("old item height", oldItem.getMeasuredHeight() + "");
-                    Log.i("old item width", oldItem.getMeasuredWidth() + "");
-                    Log.i("listViewHeight", listViewHeight + "");
-                    Log.i("contentHeight", contentHeight + "");
-                }
-
-                while (contentHeight < listViewHeight*3) {
-                    String line = "";
-                    String title = "";
-                    lineAmount = (int) (Math.random() * 4);
-                    title = "Title" + " " + index;
-                    for (int i = 0; i < lineAmount; i++) {
-                        if (i != lineAmount-1){
-                            line += "line " + i + "\n";
-                        } else {
-                            line += "line " + i;
-                        }
-                    }
-                    Task task = new Task(title, line);
-                    mTaskListArray.add(task);
-                    updateData();
-                    View newItem = mTaskListAdapter.getView(index, null, mTaskListView);
-                    newItem.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-                    contentHeight += newItem.getMeasuredHeight();
-                    Log.i("new item height", newItem.getMeasuredHeight() + "");
-                    Log.i("new item width", newItem.getMeasuredWidth() + "");
-                    Log.i("listViewHeight", listViewHeight + "");
-                    Log.i("contentHeight", contentHeight + "");
-                    Log.i("lineAmount", lineAmount + "");
-                    index++;
-
-                }
-                break;
-            case R.id.menu_remove_all:
-                mTaskListArray.clear();
+            case R.id.menu_new_task:
+                startActivityForResult(new Intent(TaskListActivity.this, NewTaskActivity.class), CREATE_NEW_TASK_REQUEST);
+                return true;
+            case R.id.menu_sort_az:
+                Collections.sort(mTaskListArray, new Task.ComparatorAZ());
                 updateData();
-                break;
+                mSharedPrefsSerializer.saveSorting(R.id.menu_sort_az);
+                item.setChecked(true);
+                return true;
+            case R.id.menu_sort_za:
+                Collections.sort(mTaskListArray, new Task.ComparatorZA());
+                updateData();
+                mSharedPrefsSerializer.saveSorting(R.id.menu_sort_za);
+                item.setChecked(true);
+                return true;
+            case R.id.menu_sort_new_old:
+                Collections.sort(mTaskListArray, new Task.ComparatorNewerOlder());
+                updateData();
+                mSharedPrefsSerializer.saveSorting(R.id.menu_sort_new_old);
+                item.setChecked(true);
+                return true;
+            case R.id.menu_sort_old_new:
+                Collections.sort(mTaskListArray, new Task.ComparatorOlderNewer());
+                updateData();
+                mSharedPrefsSerializer.saveSorting(R.id.menu_sort_old_new);
+                item.setChecked(true);
+                return true;
+            case R.id.menu_settings:
+                startActivityForResult(new Intent(TaskListActivity.this, SettingsActivity.class), SETTINGS_REQUEST);
+                return true;
+            case R.id.menu_fill:
+                generateRandomTasks();
+                return true;
+            case R.id.menu_remove_all:
+                MaterialDialogFragment.newInstance(getString(R.string.dialog_delete_all_tasks)).show(getSupportFragmentManager(), getString(R.string.dialog_delete_all_tasks));
+                return true;
+            case R.id.menu_exit:
+                finish();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
-        return true;
+    }
+
+    private void generateRandomTasks() {
+        int listViewHeight = mTaskListView.getHeight();
+        int index = 0 + mTaskListAdapter.getCount();
+        int contentHeight = 0;
+        int lineAmount = 0;
+        String[] titles = {"Meeting", "Shopping", "Exercises", "Chores", "Work",  "Cinema", "TV show", "Some stuff", "More stuff", "Another stuff"};
+        String[] commentary = {"Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                " Maecenas rutrum feugiat erat, sed vehicula purus dictum nec.",
+                " Etiam blandit pulvinar maximus.", " Aliquam in ex euismod, fringilla ipsum eu, tempus nisi.",
+                " Nunc sed ipsum massa. Suspendisse vitae vulputate quam."};
+        //check height of existing items
+        for (int i = 0; i<index; i++){
+            View oldItem = mTaskListAdapter.getView(i, null, mTaskListView);
+            oldItem.measure(View.MeasureSpec.makeMeasureSpec(mTaskListView.getWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            contentHeight += oldItem.getMeasuredHeight();
+        }
+
+        //generate new items
+        while (contentHeight < listViewHeight*3) {
+            String line = "";
+            String title = "";
+            lineAmount = (int) (Math.random() * 4) + 1;
+            title = titles[(int) (Math.random() * titles.length)];
+            for (int i = 0; i < lineAmount; i++) {
+                line += commentary[i];
+            }
+            Task task = new Task(title, line);
+            mTaskListArray.add(task);
+            updateData();
+            View newItem = mTaskListAdapter.getView(index, null, mTaskListView);
+            newItem.measure(View.MeasureSpec.makeMeasureSpec(mTaskListView.getWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+
+            Log.i("newItem.MeasuredHeight", newItem.getMeasuredHeight()+"");
+            contentHeight += newItem.getMeasuredHeight();
+            index++;
+
+        }
     }
 
     //updates data in listview and saves it to internal storage
     private void updateData() {
         mTaskListAdapter.notifyDataSetChanged();
-        Log.i("in updateData", mTaskListArray.toString());
-        mJsonSerializer.saveTaskListToJson(mTaskListArray);
-        mSharedPrefsSerializer.saveTaskListToSharedPrefs(mTaskListArray);
+        mSharedPrefsSerializer.saveTaskList(mTaskListArray);
     }
 
     @Override
@@ -215,7 +300,7 @@ public class TaskListActivity extends AppCompatActivity{
         if (resultCode == RESULT_OK){
             //check request code
             switch (requestCode) {
-                case CREATE_NEW_TASK:
+                case CREATE_NEW_TASK_REQUEST:
                     if (data == null) {
                         return;
                     }
@@ -223,25 +308,29 @@ public class TaskListActivity extends AppCompatActivity{
                     title = data.getStringExtra(TITLE_EXTRA);
                     commentary = data.getStringExtra(COMMENTARY_EXTRA);
                     //add task to list
-                    mTaskListArray.add(new Task(title, commentary));
+                    mTaskListArray.add(0, new Task(title, commentary));
                     break;
-            case EDIT_TASK:
+                case EDIT_TASK_REQUEST:
 
-                Task selected_item;
-                if (data == null) {
-                    return;
-                }
-                //extract task data
-                title = data.getStringExtra(TITLE_EXTRA);
-                commentary = data.getStringExtra(COMMENTARY_EXTRA);
-                item_id = data.getIntExtra(ITEM_ID_EXTRA, 0);
-                //get list item and change it fields
-                selected_item = mTaskListArray.get(item_id);
-                selected_item.setTitle(title);
-                selected_item.setCommentary(commentary);
-                break;
-        }
-            Log.i("in activity result", mTaskListArray.toString());
+                    Task selected_item;
+                    if (data == null) {
+                        return;
+                    }
+                    //extract task data
+                    title = data.getStringExtra(TITLE_EXTRA);
+                    commentary = data.getStringExtra(COMMENTARY_EXTRA);
+                    item_id = data.getIntExtra(ITEM_ID_EXTRA, 0);
+                    //get list item and change it fields
+                    selected_item = mTaskListArray.get(item_id);
+                    selected_item.setTitle(title);
+                    selected_item.setCommentary(commentary);
+                    break;
+                case SETTINGS_REQUEST:
+                    mBackgroundColors = mSharedPrefsDeserializer.getTaskBackgroundColors();
+                    mTaskListAdapter.setBackgroundColors(mBackgroundColors);
+                    break;
+
+            }
             updateData();
         }
     }
@@ -253,16 +342,15 @@ public class TaskListActivity extends AppCompatActivity{
         int position = ((AdapterView.AdapterContextMenuInfo)menuInfo).position;
         Task selectedTask = mTaskListArray.get(position);
         if(selectedTask.getTaskStart() == null){
-            menu.getItem(1).setEnabled(false);
+            menu.findItem(R.id.context_menu_restart).setEnabled(false);
         } else {
-            menu.getItem(1).setEnabled(true);
+            menu.findItem(R.id.context_menu_restart).setEnabled(true);
         }
     }
 
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-
         int id = item.getItemId();
         int position = ((AdapterView.AdapterContextMenuInfo)item.getMenuInfo()).position;
         switch (id){
@@ -271,7 +359,7 @@ public class TaskListActivity extends AppCompatActivity{
                 intent.putExtra(ITEM_ID_EXTRA, position);
                 intent.putExtra(TITLE_EXTRA, mTaskListArray.get(position).getTitle());
                 intent.putExtra(COMMENTARY_EXTRA, mTaskListArray.get(position).getCommentary());
-                startActivityForResult(intent, EDIT_TASK);
+                startActivityForResult(intent, EDIT_TASK_REQUEST);
                 return true;
             case R.id.context_menu_restart:
                 Task selectedTask = mTaskListArray.get(position);
@@ -293,5 +381,28 @@ public class TaskListActivity extends AppCompatActivity{
         savedInstanceState.putParcelableArrayList(SAVED_TASK_LIST, mTaskListArray);
     }
 
+    @Override
+    public void onBackPressed() {
+        mHandler = new Handler();
+        mRunnable = new Runnable() {
+            @Override
+            public void run() {
+                mBackPressed = false;
+            }
+        };
+        if(mBackPressed){
+            super.onBackPressed();
+        } else {
+            mBackPressed = true;
+            mHandler.postDelayed(mRunnable, 2000);
+            Snackbar.make(findViewById(R.id.task_list_activity_container),
+                    getString(R.string.press_back_again_to_exit), Snackbar.LENGTH_SHORT).show();
+        }
+    }
 
+    @Override
+    public void onPositive() {
+        mTaskListArray.clear();
+        updateData();
+    }
 }
