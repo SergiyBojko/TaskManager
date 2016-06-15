@@ -92,7 +92,7 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
         mSelectedPreferenceKey = preference.getKey();
         switch (mSelectedPreferenceKey){
             case IDLE_TASK_BACKGROUND_COLOR:
-                new ColorChooserDialog.Builder(this, R.string.choose_color)
+                new ColorChooserDialog.Builder(this, R.string.choose_idle_task_color)
                         .doneButton(R.string.md_done_label)
                         .cancelButton(R.string.md_cancel_label)
                         .backButton(R.string.md_back_label)
@@ -103,7 +103,7 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
                         .show();
                 break;
             case STARTED_TASK_BACKGROUND_COLOR:
-                new ColorChooserDialog.Builder(this, R.string.choose_color)
+                new ColorChooserDialog.Builder(this, R.string.choose_started_task_color)
                         .doneButton(R.string.md_done_label)
                         .cancelButton(R.string.md_cancel_label)
                         .backButton(R.string.md_back_label)
@@ -114,7 +114,7 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
                         .show();
                 break;
             case FINISHED_TASK_BACKGROUND_COLOR:
-                new ColorChooserDialog.Builder(this, R.string.choose_color)
+                new ColorChooserDialog.Builder(this, R.string.choose_finished_task_color)
                         .doneButton(R.string.md_done_label)
                         .cancelButton(R.string.md_cancel_label)
                         .backButton(R.string.md_back_label)

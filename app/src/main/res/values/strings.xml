@@ -27,7 +27,9 @@
     <string name="menu_sort_old_new">Older first</string>
     <string name="pref_task_colors_title">Task background colors</string>
     <string name="settings_activity_title">Settings</string>
-    <string name="choose_color">Choose color</string>
+    <string name="choose_idle_task_color">Idle task color</string>
+    <string name="choose_started_task_color">Started task color</string>
+    <string name="choose_finished_task_color">Finished task color</string>
     <string name="pref_restore_default_colors">Restore default colors</string>
     <string name="pref_idle_task_color">Idle</string>
     <string name="pref_started_task_color">Started</string>
