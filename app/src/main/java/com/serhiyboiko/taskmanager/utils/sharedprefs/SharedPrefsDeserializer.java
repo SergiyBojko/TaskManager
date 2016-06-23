@@ -28,21 +28,10 @@ public class SharedPrefsDeserializer {
     static final String IDLE_TASK_BACKGROUND_COLOR = "idle_task_background_color";
     static final String STARTED_TASK_BACKGROUND_COLOR = "started_task_background_color";
     static final String ENDED_TASK_BACKGROUND_COLOR = "finished_task_background_color";
+    final static String MAXIMUM_TASK_DURATION = "maximum_task_duration";
 
     public SharedPrefsDeserializer(Context context){
         mContext = context;
-    }
-
-    public ArrayList<Task> getTaskList(){
-        Gson gson = new Gson();
-        Type taskListType = new TypeToken<Collection<Task>>() {}.getType();
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String taskListJson = sp.getString(SharedPrefsSerializer.TASK_JSON_ARRAY, "");
-        ArrayList<Task> taskList = gson.fromJson(taskListJson, taskListType);
-        if (taskList == null){
-            taskList = new ArrayList<>();
-        }
-        return taskList;
     }
 
     public int getListSorting(){
@@ -61,5 +50,11 @@ public class SharedPrefsDeserializer {
                 mContext.getResources().getColor(R.color.finished_task_background_color_default));
         int[] taskBackgroundColors = {idleColor, startedColor, endedColor};
         return taskBackgroundColors;
+    }
+
+    public int getMaxTaskDuration(){
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        int maxDuration = sp.getInt(MAXIMUM_TASK_DURATION, 0);
+        return maxDuration;
     }
 }

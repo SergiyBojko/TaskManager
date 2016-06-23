@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             tools:context=".activity.SplashScreenActivity">
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/page3"
+        android:layout_gravity="center"
+        android:background="@color/transparent"
+        android:src="@mipmap/page3"/>
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/page2"
+        android:layout_gravity="center"
+        android:background="@color/transparent"
+        android:src="@mipmap/page2"/>
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/page1"
+        android:layout_gravity="center"
+        android:background="@color/transparent"
+        android:src="@mipmap/page1"/>
+
+    <TextView
+        android:id="@+id/app_name"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="@string/app_name"
+        android:textColor="@color/white"
+        android:textSize="40sp"
+        android:gravity="center"
+        android:shadowRadius="8"
+        android:shadowColor="@color/halfTransparentBlack"
+        android:textStyle="bold|italic"
+        android:background="@color/transparent"/>
+
+
+</RelativeLayout>

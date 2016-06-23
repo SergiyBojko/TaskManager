@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#9fa8da</color>
-    <color name="toolbarActionPressed">#a8afd6</color>
-    <color name="colorPrimaryDark">#7986cb</color>
+    <color name="colorPrimary">#4fc3f7</color>
+    <color name="toolbarActionPressed">#81d4fa</color>
+    <color name="colorPrimaryDark">#42a5f5</color>
     <color name="colorAccent">#f48fb1</color>
     <color name="colorAccentDark">#f06292</color>
     <color name="white">#FFFFFFFF</color>
     <color name="idle_task_background_color_default">#ffffcdd2</color>
     <color name="started_task_background_color_default">#fffff9c4</color>
     <color name="finished_task_background_color_default">#ffc8e6c9</color>
+    <color name="black">#FF000000</color>
+    <color name="halfTransparentBlack">#90000000</color>
+    <color name="lightGray">#FFE0E0E0</color>
+    <color name="yellow">#ffea00</color>
+    <color name="lightYellow">#fff59d</color>
+    <color name="transparent">#00000000</color>
 </resources>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <corners android:radius="@dimen/start_stop_image_button_corners" />
+            <gradient
+                android:angle="270"
+                android:startColor="#00000000"
+                android:centerColor="#99000000"
+                android:endColor="#99000000"/>
+        </shape>
+    </item>
+
+    <item>
+        <inset
+            android:insetBottom="@dimen/start_stop_image_button_shift">
+            <shape>
+                <corners android:radius="@dimen/start_stop_image_button_corners" />
+                <gradient
+                    android:angle="90"
+                    android:startColor="@color/yellow"
+                    android:endColor="@color/lightYellow"/>
+            </shape>
+        </inset>
+
+    </item>
+
+    <item android:drawable="@drawable/ic_stop_black_24dp"
+          android:top="@dimen/start_stop_image_button_padding"
+          android:bottom="@dimen/start_stop_image_button_padding"
+          android:left="@dimen/start_stop_image_button_padding"
+          android:right="@dimen/start_stop_image_button_padding">
+    </item>
+</layer-list>
+

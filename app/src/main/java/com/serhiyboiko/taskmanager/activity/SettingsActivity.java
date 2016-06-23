@@ -6,71 +6,93 @@ import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.annotation.ColorInt;
+import android.support.annotation.IntegerRes;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.afollestad.materialdialogs.color.ColorChooserDialog;
 import com.serhiyboiko.taskmanager.R;
 import com.serhiyboiko.taskmanager.dialog.MaterialDialogFragment;
+import com.serhiyboiko.taskmanager.dialog.MaterialDialogInputFragment;
 
 /**
  * Created by Amegar on 11.06.2016.
  */
 public class SettingsActivity extends AppCompatActivity implements ColorChooserDialog.ColorCallback,
-        SettingsActivityClickListener, MaterialDialogFragment.DialogListener {
+        SettingsActivityClickListener, MaterialDialogFragment.DialogListener, MaterialDialogInputFragment.DialogListener {
 
     final static String IDLE_TASK_BACKGROUND_COLOR = "idle_task_background_color";
     final static String STARTED_TASK_BACKGROUND_COLOR = "started_task_background_color";
     final static String FINISHED_TASK_BACKGROUND_COLOR = "finished_task_background_color";
     final static String RESTORE_DEFAULT_COLORS = "restore_defaults";
+    final static String MAXIMUM_TASK_DURATION = "maximum_task_duration";
 
     private String mSelectedPreferenceKey;
     private SharedPreferences mSharedPreferences;
 
-
-    public static class SettingsFragment extends PreferenceFragment{
+    public static class SettingsFragment extends PreferenceFragment implements Preference.OnPreferenceClickListener,
+            SharedPreferences.OnSharedPreferenceChangeListener{
         private SettingsActivityClickListener mListener;
+        private Preference mIdleTaskColor;
+        private Preference mStartedTaskColor;
+        private Preference mFinishedTaskColor;
+        private Preference mRestoreDefaultColors;
+        private Preference mMaxTaskDuration;
+        private SharedPreferences mSharedPreferences;
+
+
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.settings);
+            mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
             mListener = (SettingsActivityClickListener)getActivity();
 
-            Preference idleTaskColor = findPreference(IDLE_TASK_BACKGROUND_COLOR);
-            idleTaskColor.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(Preference preference) {
-                    mListener.onPreferenceClick(preference);
-                    return true;
-                }
-            });
+            mIdleTaskColor = findPreference(IDLE_TASK_BACKGROUND_COLOR);
+            mIdleTaskColor.setOnPreferenceClickListener(this);
 
-            Preference startedTaskColor = findPreference(STARTED_TASK_BACKGROUND_COLOR);
-            startedTaskColor.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(Preference preference) {
-                    mListener.onPreferenceClick(preference);
-                    return true;
-                }
-            });
+            mStartedTaskColor = findPreference(STARTED_TASK_BACKGROUND_COLOR);
+            mStartedTaskColor.setOnPreferenceClickListener(this);
 
-            Preference finishedTaskColor = findPreference(FINISHED_TASK_BACKGROUND_COLOR);
-            finishedTaskColor.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(Preference preference) {
-                    mListener.onPreferenceClick(preference);
-                    return true;
-                }
-            });
+            mFinishedTaskColor = findPreference(FINISHED_TASK_BACKGROUND_COLOR);
+            mFinishedTaskColor.setOnPreferenceClickListener(this);
 
-            Preference restoreDefaultColors = findPreference(RESTORE_DEFAULT_COLORS);
-            restoreDefaultColors.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(Preference preference) {
-                    mListener.onPreferenceClick(preference);
-                    return true;
-                }
-            });
+            mRestoreDefaultColors = findPreference(RESTORE_DEFAULT_COLORS);
+            mRestoreDefaultColors.setOnPreferenceClickListener(this);
+
+            mMaxTaskDuration = findPreference(MAXIMUM_TASK_DURATION);
+            mMaxTaskDuration.setOnPreferenceClickListener(this);
+            int currentMaxDuration = mSharedPreferences.getInt(MAXIMUM_TASK_DURATION, 0);
+            if (currentMaxDuration > 0){
+                mMaxTaskDuration.setSummary("Tasks will finish automatically in " + currentMaxDuration + " sec");
+            } else {
+                mMaxTaskDuration.setSummary("Tasks will not finish automatically");
+            }
+        }
+
+        @Override
+        public boolean onPreferenceClick(Preference preference) {
+            mListener.onPreferenceClick(preference);
+            return true;
+        }
+
+
+
+        @Override
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+            switch (key){
+                case MAXIMUM_TASK_DURATION:
+                    int currentMaxDuration = mSharedPreferences.getInt(MAXIMUM_TASK_DURATION, 0);
+                    if (currentMaxDuration > 0){
+                        mMaxTaskDuration.setSummary("Tasks will finish automatically in " + currentMaxDuration + " sec");
+                    } else {
+                        mMaxTaskDuration.setSummary("Tasks will not finish automatically");
+                    }
+                    break;
+            }
         }
     }
 
@@ -125,8 +147,15 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
                         .show();
                 break;
             case RESTORE_DEFAULT_COLORS:
-                MaterialDialogFragment.newInstance(getString(R.string.dialog_restore_default_colors))
+                MaterialDialogFragment.newInstance(R.string.dialog_restore_default_colors)
                         .show(getSupportFragmentManager(), getString(R.string.dialog_restore_default_colors));
+                break;
+            case MAXIMUM_TASK_DURATION:
+                int currentMaxDuration = mSharedPreferences.getInt(MAXIMUM_TASK_DURATION, 0);
+                MaterialDialogInputFragment.newInstance(R.string.dialog_set_max_task_duration,
+                        R.string.dialog_set_max_task_duration_description, Integer.toString(currentMaxDuration))
+                        .show(getSupportFragmentManager(), getString(R.string.dialog_set_max_task_duration));
+                break;
         }
 
     }
@@ -138,13 +167,32 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
     }
 
     @Override
-    public void onPositive() {
-        mSharedPreferences.edit()
-                .remove(IDLE_TASK_BACKGROUND_COLOR)
-                .remove(STARTED_TASK_BACKGROUND_COLOR)
-                .remove(FINISHED_TASK_BACKGROUND_COLOR)
-                .commit();
-        setResult(RESULT_OK);
+    public void onPositive(int titleId) {
+        switch (titleId){
+            case R.string.dialog_restore_default_colors:
+                mSharedPreferences.edit()
+                        .remove(IDLE_TASK_BACKGROUND_COLOR)
+                        .remove(STARTED_TASK_BACKGROUND_COLOR)
+                        .remove(FINISHED_TASK_BACKGROUND_COLOR)
+                        .commit();
+                setResult(RESULT_OK);
+                break;
+        }
+    }
+
+    @Override
+    public void onInput(int titleId, CharSequence input) {
+        switch (titleId){
+            case R.string.dialog_set_max_task_duration:
+                String inputString = input.toString();
+                if (inputString.equals("")){
+                    inputString = "0";
+                }
+                mSharedPreferences.edit().putInt(MAXIMUM_TASK_DURATION, Integer.parseInt(inputString)).commit();
+                setResult(RESULT_OK);
+                break;
+
+        }
     }
 }
 

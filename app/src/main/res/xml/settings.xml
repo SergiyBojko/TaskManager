@@ -15,4 +15,10 @@
             android:key="restore_defaults"
             android:title="@string/pref_restore_default_colors"/>
     </PreferenceCategory>
+    <PreferenceCategory
+        android:title="@string/pref_other_title">
+        <Preference
+            android:key="maximum_task_duration"
+            android:title="@string/pref_maximum_task_duration"/>
+    </PreferenceCategory>
 </PreferenceScreen>

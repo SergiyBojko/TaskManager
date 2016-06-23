@@ -1,65 +1,78 @@
 package com.serhiyboiko.taskmanager.model;
 
+
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.preference.PreferenceManager;
 import android.util.Log;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.Comparator;
 import java.util.GregorianCalendar;
 
-public class Task implements Parcelable{
+import io.realm.RealmObject;
+import io.realm.annotations.PrimaryKey;
+
+public class Task extends RealmObject implements Parcelable{
     private final static long CALENDAR_EMPTY = -1;
+    private static final String NEXT_TASK_ID = "next_task_id";
+
+    @PrimaryKey
+    private long mId;
     private String mTitle;
     private String mCommentary;
-    private GregorianCalendar mTaskStart;
-    private GregorianCalendar mTaskEnd;
+    private long mTaskStart;
+    private long mTaskEnd;
+    private long mTaskRestart;
     private long mTimeSpend;
+    private int mAlertRequestCode;
 
-    public final static String TITLE = "title";
-    public final static String COMMENTARY = "commentary";
-    public final static String START_DATE = "start";
-    public final static String END_DATE = "end";
-    public final static String ELAPSED_TIME = "elapsed_time";
+    public Task(){}
 
-
-    public Task(){
-
-    }
-
-    public Task(String title, String commentary){
+    public Task(Context context, String commentary, String title){
         mTitle = title;
         mCommentary = commentary;
-        Log.i("created new item", this.toString());
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        mId = sp.getLong(NEXT_TASK_ID, 0);
+
+        long nextId = ++mId;
+        sp.edit().putLong(NEXT_TASK_ID, nextId).commit();
+
+        Log.i("created new task", this.toString());
     }
 
     private Task(Parcel parcel) {
         mTitle = parcel.readString();
         mCommentary = parcel.readString();
-        long startTimeInMills = 0;
-        long endTimeInMills = 0;
+        long startTimeInMills;
+        long endTimeInMills;
+        long restartTimeInMills;
         startTimeInMills = parcel.readLong();
 
         if (startTimeInMills != CALENDAR_EMPTY){
-            mTaskStart = new GregorianCalendar();
-            mTaskStart.setTimeInMillis(startTimeInMills);
+            mTaskStart = startTimeInMills;
             endTimeInMills = parcel.readLong();
             if (endTimeInMills != CALENDAR_EMPTY){
-                mTaskEnd = new GregorianCalendar();
-                mTaskEnd.setTimeInMillis(endTimeInMills);
+                mTaskEnd = endTimeInMills;
                 mTimeSpend = parcel.readLong();
             }
         }
+        restartTimeInMills = parcel.readLong();
+        if (restartTimeInMills != CALENDAR_EMPTY){
+            mTaskRestart = restartTimeInMills;
+        }
+
+        mId = parcel.readLong();
 
 
         Log.i("created from parcel", this.toString());
     }
 
 
-
+    public long getId() {
+        return mId;
+    }
 
     public String getTitle() {
         return mTitle;
@@ -78,19 +91,39 @@ public class Task implements Parcelable{
     }
 
     public GregorianCalendar getTaskEnd() {
-        return mTaskEnd;
+        if(mTaskEnd == 0){
+            return null;
+        }
+        GregorianCalendar calendar = new GregorianCalendar();
+        calendar.setTimeInMillis(mTaskEnd);
+        return calendar;
     }
 
     public void setTaskEnd(GregorianCalendar taskEnd) {
-        mTaskEnd = taskEnd;
+        if (taskEnd != null){
+            mTaskEnd = taskEnd.getTimeInMillis();
+            mTimeSpend = mTaskEnd - mTaskStart;
+        } else {
+            mTaskEnd = 0;
+            mTimeSpend = 0;
+        }
     }
 
     public GregorianCalendar getTaskStart() {
-        return mTaskStart;
+        if(mTaskStart == 0){
+            return null;
+        }
+        GregorianCalendar calendar = new GregorianCalendar();
+        calendar.setTimeInMillis(mTaskStart);
+        return calendar;
     }
 
     public void setTaskStart(GregorianCalendar taskStart) {
-        mTaskStart = taskStart;
+        if (taskStart != null){
+            mTaskStart = taskStart.getTimeInMillis();
+        } else {
+            mTaskStart = 0;
+        }
     }
 
     public long getTimeSpend() {
@@ -99,6 +132,32 @@ public class Task implements Parcelable{
 
     public void setTimeSpend(long timeSpend) {
         mTimeSpend = timeSpend;
+    }
+
+    public GregorianCalendar getTaskRestart() {
+        if(mTaskRestart == 0){
+            return null;
+        }
+        GregorianCalendar calendar = new GregorianCalendar();
+        calendar.setTimeInMillis(mTaskRestart);
+        return calendar;
+    }
+
+    public void setTaskRestart(GregorianCalendar taskRestart) {
+        if (taskRestart != null){
+            mTaskRestart = taskRestart.getTimeInMillis();
+        } else {
+            mTaskRestart = 0;
+        }
+
+    }
+
+    public int getAlertRequestCode() {
+        return mAlertRequestCode;
+    }
+
+    public void setAlertRequestCode(int alertRequestCode) {
+        mAlertRequestCode = alertRequestCode;
     }
 
     @Override
@@ -111,17 +170,24 @@ public class Task implements Parcelable{
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(mTitle);
         dest.writeString(mCommentary);
-        if (mTaskStart != null){
-            dest.writeLong(mTaskStart.getTimeInMillis());
+        if (mTaskStart > 0){
+            dest.writeLong(mTaskStart);
         } else {
             dest.writeLong(CALENDAR_EMPTY);
         }
-        if (mTaskEnd != null){
-            dest.writeLong(mTaskEnd.getTimeInMillis());
+        if (mTaskEnd > 0){
+            dest.writeLong(mTaskEnd);
             dest.writeLong(mTimeSpend);
         } else {
             dest.writeLong(CALENDAR_EMPTY);
         }
+        if (mTaskRestart > 0){
+            dest.writeLong(mTaskRestart);
+        } else {
+            dest.writeLong(CALENDAR_EMPTY);
+        }
+
+        dest.writeLong(mId);
 
     }
 
@@ -137,7 +203,7 @@ public class Task implements Parcelable{
 
     @Override
     public String toString() {
-        return mTitle + " " + mCommentary + " " +  mTaskStart + " " +  mTaskEnd;
+        return mId + " " + mTitle + " " + mCommentary + " " +  mTaskStart + " " +  mTaskEnd;
     }
 
     public static class ComparatorAZ implements Comparator<Task>{

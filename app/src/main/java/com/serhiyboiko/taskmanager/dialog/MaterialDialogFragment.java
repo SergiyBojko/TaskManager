@@ -2,6 +2,7 @@ package com.serhiyboiko.taskmanager.dialog;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.DialogFragment;
@@ -11,10 +12,12 @@ import com.serhiyboiko.taskmanager.R;
 
 public class MaterialDialogFragment extends DialogFragment {
 
-    public static MaterialDialogFragment newInstance(String title) {
+    final static String TITLE_ID = "title_id";
+
+    public static MaterialDialogFragment newInstance(int titleId) {
         MaterialDialogFragment frag = new MaterialDialogFragment();
         Bundle args = new Bundle();
-        args.putString("title", title);
+        args.putInt(TITLE_ID, titleId);
         frag.setArguments(args);
         return frag;
     }
@@ -30,21 +33,21 @@ public class MaterialDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        String title = getArguments().getString("title");
+        final int titleId = getArguments().getInt(TITLE_ID);
         Dialog dialog = new com.afollestad.materialdialogs.MaterialDialog.Builder(getActivity())
-                .title(title)
+                .title(getContext().getString(titleId))
                 .positiveText(R.string.ok_label)
                 .negativeText(R.string.md_cancel_label)
                 .onPositive(new com.afollestad.materialdialogs.MaterialDialog.SingleButtonCallback() {
                     @Override
                     public void onClick(@NonNull com.afollestad.materialdialogs.MaterialDialog dialog, @NonNull DialogAction which) {
-                        ((DialogListener)getActivity()).onPositive();
+                        ((DialogListener)getActivity()).onPositive(titleId);
                     }
                 }).build();
         return dialog;
     }
 
     public interface DialogListener {
-        void onPositive();
+        void onPositive(int titleId);
     }
 }

@@ -30,16 +30,6 @@ public class SharedPrefsSerializer {
         mContext = context;
     }
 
-    public void saveTaskList(ArrayList<Task> taskList){
-        Gson gson = new Gson();
-        Type taskListType = new TypeToken<Collection<Task>>() {}.getType();
-        String taskListJson = gson.toJson(taskList, taskListType);
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(TASK_JSON_ARRAY, taskListJson);
-        editor.commit();
-    }
-
     public void saveSorting (int sortingId){
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sharedPreferences.edit();
