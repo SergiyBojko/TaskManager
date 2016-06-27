@@ -4,26 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.serhiyboiko.taskmanager.R;
-import com.serhiyboiko.taskmanager.model.Task;
 
-import org.json.JSONArray;
-
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collection;
-
-/**
- * Created by Amegar on 03.06.2016.
- */
 public class SharedPrefsDeserializer {
     private Context mContext;
-
-    private final static int DEFAULT_IDLE_TASK_COLOR = 0xffffdddd;
-    private final static int DEFAULT_STARTED_TASK_COLOR = 0xffffffcc;
-    private final static int DEFAULT_ENDED_TASK_COLOR = 0xffddffdd;
 
     static final String IDLE_TASK_BACKGROUND_COLOR = "idle_task_background_color";
     static final String STARTED_TASK_BACKGROUND_COLOR = "started_task_background_color";

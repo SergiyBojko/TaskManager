@@ -4,13 +4,13 @@
     <translate
         android:fromXDelta="0"
         android:toXDelta="0"
-        android:fromYDelta="40%"
+        android:fromYDelta="25%"
         android:toYDelta="0"
         android:duration="400"
         android:interpolator="@anim/decelerate_cubic"/>
     <alpha
         android:fromAlpha="0"
         android:toAlpha="1"
-        android:duration="200"
+        android:duration="300"
         android:interpolator="@anim/decelerate_cubic"/>
 </set>

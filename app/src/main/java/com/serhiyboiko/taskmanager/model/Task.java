@@ -8,7 +8,6 @@ import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
-import java.util.Comparator;
 import java.util.GregorianCalendar;
 
 import io.realm.RealmObject;
@@ -19,14 +18,13 @@ public class Task extends RealmObject implements Parcelable{
     private static final String NEXT_TASK_ID = "next_task_id";
 
     @PrimaryKey
-    private long mId;
+    private int mId;
     private String mTitle;
     private String mCommentary;
     private long mTaskStart;
     private long mTaskEnd;
     private long mTaskRestart;
     private long mTimeSpend;
-    private int mAlertRequestCode;
 
     public Task(){}
 
@@ -34,10 +32,10 @@ public class Task extends RealmObject implements Parcelable{
         mTitle = title;
         mCommentary = commentary;
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-        mId = sp.getLong(NEXT_TASK_ID, 0);
+        mId = sp.getInt(NEXT_TASK_ID, 0);
 
-        long nextId = ++mId;
-        sp.edit().putLong(NEXT_TASK_ID, nextId).commit();
+        int nextId = ++mId;
+        sp.edit().putInt(NEXT_TASK_ID, nextId).commit();
 
         Log.i("created new task", this.toString());
     }
@@ -63,14 +61,13 @@ public class Task extends RealmObject implements Parcelable{
             mTaskRestart = restartTimeInMills;
         }
 
-        mId = parcel.readLong();
-
+        mId = parcel.readInt();
 
         Log.i("created from parcel", this.toString());
     }
 
 
-    public long getId() {
+    public int getId() {
         return mId;
     }
 
@@ -152,14 +149,6 @@ public class Task extends RealmObject implements Parcelable{
 
     }
 
-    public int getAlertRequestCode() {
-        return mAlertRequestCode;
-    }
-
-    public void setAlertRequestCode(int alertRequestCode) {
-        mAlertRequestCode = alertRequestCode;
-    }
-
     @Override
     public int describeContents() {
         return 0;
@@ -187,7 +176,7 @@ public class Task extends RealmObject implements Parcelable{
             dest.writeLong(CALENDAR_EMPTY);
         }
 
-        dest.writeLong(mId);
+        dest.writeInt(mId);
 
     }
 
@@ -204,89 +193,5 @@ public class Task extends RealmObject implements Parcelable{
     @Override
     public String toString() {
         return mId + " " + mTitle + " " + mCommentary + " " +  mTaskStart + " " +  mTaskEnd;
-    }
-
-    public static class ComparatorAZ implements Comparator<Task>{
-
-        @Override
-        public int compare(Task lhs, Task rhs) {
-            int comparison = lhs.getTitle().toLowerCase().compareTo(rhs.getTitle().toLowerCase());
-            if (comparison != 0){
-                return comparison;
-            }
-            GregorianCalendar lhsStart = lhs.getTaskStart();
-            GregorianCalendar rhsStart = rhs.getTaskStart();
-            if(lhsStart != null && rhsStart != null){
-                comparison = (int)(rhsStart.getTimeInMillis() - lhsStart.getTimeInMillis());
-            } else {
-                if (lhsStart == null & rhsStart == null) return 0;
-                if (rhsStart == null) return -1;
-                if (lhsStart == null) return 1;
-            }
-            return comparison;
-        }
-    }
-
-    public static class ComparatorZA implements Comparator<Task>{
-
-        @Override
-        public int compare(Task lhs, Task rhs) {
-            int comparison = rhs.getTitle().toLowerCase().compareTo(lhs.getTitle().toLowerCase());
-            if (comparison != 0){
-                return comparison;
-            }
-            GregorianCalendar lhsStart = lhs.getTaskStart();
-            GregorianCalendar rhsStart = rhs.getTaskStart();
-            if(lhsStart != null && rhsStart != null){
-                comparison = (int)(rhsStart.getTimeInMillis() - lhsStart.getTimeInMillis());
-            } else {
-                if (lhsStart == null & rhsStart == null) return 0;
-                if (rhsStart == null) return -1;
-                if (lhsStart == null) return 1;
-            }
-            return comparison;
-        }
-    }
-
-    public static class ComparatorNewerOlder implements Comparator<Task>{
-
-        @Override
-        public int compare(Task lhs, Task rhs) {
-            int comparison = 0;
-            GregorianCalendar lhsStart = lhs.getTaskStart();
-            GregorianCalendar rhsStart = rhs.getTaskStart();
-            if(lhsStart != null && rhsStart != null){
-                comparison = (int)(rhsStart.getTimeInMillis() - lhsStart.getTimeInMillis());
-            } else {
-                if (rhsStart == null) comparison += -1;
-                if (lhsStart == null) comparison += 1;
-            }
-            if (comparison != 0){
-                return comparison;
-            }
-            comparison = lhs.getTitle().toLowerCase().compareTo(rhs.getTitle().toLowerCase());
-            return comparison;
-        }
-    }
-
-    public static class ComparatorOlderNewer implements Comparator<Task>{
-
-        @Override
-        public int compare(Task lhs, Task rhs) {
-            int comparison = 0;
-            GregorianCalendar lhsStart = lhs.getTaskStart();
-            GregorianCalendar rhsStart = rhs.getTaskStart();
-            if(lhsStart != null && rhsStart != null){
-                comparison = (int)(lhsStart.getTimeInMillis() - rhsStart.getTimeInMillis());
-            } else {
-                if (rhsStart == null) comparison += -1;
-                if (lhsStart == null) comparison += 1;
-            }
-            if (comparison != 0){
-                return comparison;
-            }
-            comparison = lhs.getTitle().toLowerCase().compareTo(rhs.getTitle().toLowerCase());
-            return comparison;
-        }
     }
 }

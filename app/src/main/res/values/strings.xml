@@ -46,4 +46,6 @@
     <string name="dialog_set_max_task_duration">Max task duration</string>
     <string name="pref_other_title">Other</string>
     <string name="dialog_set_max_task_duration_description">(0 - tasks will not end automatically)</string>
+    <string name="task_will_finish_at_sec">Tasks will finish automatically in %d sec</string>
+    <string name="task_will_not_finish">Tasks will not finish automatically</string>
 </resources>

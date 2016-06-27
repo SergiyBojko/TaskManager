@@ -1,9 +1,6 @@
 package com.serhiyboiko.taskmanager.activity;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
@@ -11,7 +8,6 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,18 +21,18 @@ import com.serhiyboiko.taskmanager.utils.realm_io.RealmIO;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsDeserializer;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsSerializer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.GregorianCalendar;
-
 import io.realm.Realm;
+import io.realm.RealmChangeListener;
+import io.realm.RealmResults;
+import io.realm.Sort;
 
 public class TaskListActivity extends AppCompatActivity implements MaterialDialogFragment.DialogListener {
 
 
+    private static final String TAG = "TaskListActivity";
     private RecyclerView mTaskListView;
     private FloatingActionButton mNewTaskButton;
-    private ArrayList<Task> mTaskListArray;
+    private RealmResults<Task> mTaskListRealmResults;
     private TaskListAdapter mTaskListAdapter;
     private SharedPrefsSerializer mSharedPrefsSerializer;
     private TaskAutoFinishManager mTaskAutoFinishManager;
@@ -45,22 +41,18 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
     private boolean mBackPressed;
     private Handler mHandler;
     private Runnable mRunnable;
-    private BroadcastReceiver mBroadcastReceiver;
 
     private static final int CREATE_NEW_TASK_REQUEST = 1;
     private static final int EDIT_TASK_REQUEST = 2;
     private static final int SETTINGS_REQUEST = 3;
 
-    final static String SAVED_TASK_LIST = "task_list";
     final static String ITEM_ID_EXTRA = "item_id";
     final static String TITLE_EXTRA = "title";
     final static String COMMENTARY_EXTRA = "commentary";
+    private static final String REQUEST_CODE_EXTRA = "request_code";
 
-    private static final int UNREGISTERED = 0;
 
     private SharedPrefsDeserializer mSharedPrefsDeserializer;
-
-    public String test = "test string";
 
 
 
@@ -75,42 +67,45 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
         mSharedPrefsSerializer = new SharedPrefsSerializer(this);
 
         mRealmIO = new RealmIO(this);
+        mRealmIO.getRealm().addChangeListener(new RealmChangeListener<Realm>() {
+            @Override
+            public void onChange(Realm element) {
+                mTaskListAdapter.notifyDataSetChanged();
+            }
+        });
 
         mTaskAutoFinishManager = new TaskAutoFinishManager(this);
 
-        mTaskListArray = new ArrayList<>();
         mBackgroundColors = mSharedPrefsDeserializer.getTaskBackgroundColors();
-        mTaskListAdapter = new TaskListAdapter(this, mTaskListArray, mBackgroundColors,
-                mSharedPrefsSerializer, mTaskAutoFinishManager, mRealmIO);
-        if (savedInstanceState != null){
-            mTaskListArray.addAll((ArrayList<Task>) savedInstanceState.get(SAVED_TASK_LIST));
-            mTaskListAdapter.notifyDataSetChanged();
-        } else {
-            mTaskListArray.addAll(mRealmIO.getAllTasks());
-            int currentSortingId = mSharedPrefsDeserializer.getListSorting();
-            switch (currentSortingId){
-                case R.id.menu_sort_az:
-                    Collections.sort(mTaskListArray, new Task.ComparatorAZ());
-                    break;
-                case R.id.menu_sort_za:
-                    Collections.sort(mTaskListArray, new Task.ComparatorZA());
-                    break;
-                case R.id.menu_sort_new_old:
-                    Collections.sort(mTaskListArray, new Task.ComparatorNewerOlder());
-                    break;
-                case R.id.menu_sort_old_new:
-                    Collections.sort(mTaskListArray, new Task.ComparatorOlderNewer());
-                    break;
-            }
-            mTaskListAdapter.notifyDataSetChanged();
+
+        mTaskListRealmResults = mRealmIO.getAllTasks();
+        mTaskListAdapter = new TaskListAdapter(this, mTaskListRealmResults, mBackgroundColors, mTaskAutoFinishManager, mRealmIO);
+        int currentSortingId = mSharedPrefsDeserializer.getListSorting();
+        switch (currentSortingId){
+            case R.id.menu_sort_az:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.ASCENDING, "mTaskStart", Sort.ASCENDING);
+                break;
+            case R.id.menu_sort_za:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.DESCENDING, "mTaskStart", Sort.ASCENDING);
+                break;
+            case R.id.menu_sort_new_old:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.DESCENDING, "mTitle", Sort.ASCENDING);
+                break;
+            case R.id.menu_sort_old_new:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.ASCENDING, "mTitle", Sort.ASCENDING);
+                break;
         }
+        mTaskListAdapter.setTaskRealmResults(mTaskListRealmResults);
+
         mTaskListView.setLayoutManager(new LinearLayoutManager(this));
         mTaskListView.setAdapter(mTaskListAdapter);
 
         mNewTaskButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivityForResult(new Intent(TaskListActivity.this, NewTaskActivity.class), CREATE_NEW_TASK_REQUEST);
+                Intent intent = new Intent(TaskListActivity.this, EditTaskActivity.class);
+                intent.putExtra(REQUEST_CODE_EXTRA, CREATE_NEW_TASK_REQUEST);
+                startActivityForResult(intent, CREATE_NEW_TASK_REQUEST);
             }
         });
     }
@@ -118,37 +113,11 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
     @Override
     protected void onStart() {
         super.onStart();
-        mTaskListAdapter.notifyDataSetChanged();
-        mBroadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                long taskId = intent.getLongExtra("primary_key", 0);
-                for (Task task:mTaskListArray){
-                    if (taskId == task.getId()){
-                        Realm.getDefaultInstance().beginTransaction();
-                        task.setTaskEnd(new GregorianCalendar());
-                        task.setAlertRequestCode(UNREGISTERED);
-                        Realm.getDefaultInstance().commitTransaction();
-                        break;
-                    }
-                }
-                mTaskListAdapter.notifyDataSetChanged();
-                Log.i("in inner reciever", "notifyDataSetChanged");
-            }
-        };
-
-        IntentFilter intentFilter = new IntentFilter("com.serhiyboiko.taskmanager.UPDATE_DATA");
-        intentFilter.addCategory("android.intent.category.DEFAULT");
-        registerReceiver(mBroadcastReceiver, intentFilter);
-        Log.i("in inner reciever", "registered");
-
-
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        unregisterReceiver(mBroadcastReceiver);
         if(mHandler != null){
             mHandler.removeCallbacks(mRunnable);
         }
@@ -157,6 +126,7 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mRealmIO.getRealm().removeAllChangeListeners();
         mRealmIO.close();
     }
 
@@ -186,29 +156,31 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
         int itemId = item.getItemId();
         switch (itemId){
             case R.id.menu_new_task:
-                startActivityForResult(new Intent(TaskListActivity.this, NewTaskActivity.class), CREATE_NEW_TASK_REQUEST);
+                Intent intent = new Intent(TaskListActivity.this, EditTaskActivity.class);
+                intent.putExtra(REQUEST_CODE_EXTRA, CREATE_NEW_TASK_REQUEST);
+                startActivityForResult(intent, CREATE_NEW_TASK_REQUEST);
                 return true;
             case R.id.menu_sort_az:
-                Collections.sort(mTaskListArray, new Task.ComparatorAZ());
-                mTaskListAdapter.notifyDataSetChanged();
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.ASCENDING, "mTaskStart", Sort.ASCENDING);
+                mTaskListAdapter.setTaskRealmResults(mTaskListRealmResults);
                 mSharedPrefsSerializer.saveSorting(R.id.menu_sort_az);
                 item.setChecked(true);
                 return true;
             case R.id.menu_sort_za:
-                Collections.sort(mTaskListArray, new Task.ComparatorZA());
-                mTaskListAdapter.notifyDataSetChanged();
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.DESCENDING, "mTaskStart", Sort.ASCENDING);
+                mTaskListAdapter.setTaskRealmResults(mTaskListRealmResults);
                 mSharedPrefsSerializer.saveSorting(R.id.menu_sort_za);
                 item.setChecked(true);
                 return true;
             case R.id.menu_sort_new_old:
-                Collections.sort(mTaskListArray, new Task.ComparatorNewerOlder());
-                mTaskListAdapter.notifyDataSetChanged();
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.DESCENDING, "mTitle", Sort.ASCENDING);
+                mTaskListAdapter.setTaskRealmResults(mTaskListRealmResults);
                 mSharedPrefsSerializer.saveSorting(R.id.menu_sort_new_old);
                 item.setChecked(true);
                 return true;
             case R.id.menu_sort_old_new:
-                Collections.sort(mTaskListArray, new Task.ComparatorOlderNewer());
-                mTaskListAdapter.notifyDataSetChanged();
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.ASCENDING, "mTitle", Sort.ASCENDING);
+                mTaskListAdapter.setTaskRealmResults(mTaskListRealmResults);
                 mSharedPrefsSerializer.saveSorting(R.id.menu_sort_old_new);
                 item.setChecked(true);
                 return true;
@@ -242,18 +214,14 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
                 " Nunc sed ipsum massa. Suspendisse vitae vulputate quam."};
 
         //check height of existing items
-        Log.i("index", listSize+"");
         TaskListAdapter.ViewHolder viewHolder = mTaskListAdapter.onCreateViewHolder(mTaskListView, 0);
         for (int i = 0; i<listSize; i++){
-            mTaskListAdapter.onBindViewHolder(viewHolder, i);
+            mTaskListAdapter.onBindViewHolder(viewHolder, mTaskListRealmResults.get(i));
             View oldItem = viewHolder.itemView;
             oldItem.measure(View.MeasureSpec.makeMeasureSpec(mTaskListView.getWidth(), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-            Log.i("oldItem Height", oldItem.getMeasuredHeight()+"");
             contentHeight += oldItem.getMeasuredHeight();
         }
-
-        int index = listSize;
         //generate new items
         while (contentHeight < listViewHeight*3) {
             String line = "";
@@ -264,17 +232,12 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
                 line += commentary[i];
             }
             Task task = new Task(this, line, title);
-            mTaskListArray.add(task);
             mRealmIO.putTask(task);
-            mTaskListAdapter.onBindViewHolder(viewHolder, index);
+            mTaskListAdapter.onBindViewHolder(viewHolder, task);
             View newItem = viewHolder.itemView;
             newItem.measure(View.MeasureSpec.makeMeasureSpec(mTaskListView.getWidth(), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-            Log.i("mTaskListArray.size", mTaskListArray.size()+"");
-            Log.i("index", index+"");
-            Log.i("newItem Height", newItem.getMeasuredHeight()+"");
             contentHeight += newItem.getMeasuredHeight();
-            index++;
         }
     }
 
@@ -298,14 +261,9 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
                     commentary = data.getStringExtra(COMMENTARY_EXTRA);
                     //add task to list
                     Task task = new Task(this, commentary, title);
-                    mTaskListArray.add(0, task);
                     mRealmIO.putTask(task);
-                    mTaskListAdapter.notifyDataSetChanged();
-                    Log.i("array", mTaskListArray.toString());
                     break;
                 case EDIT_TASK_REQUEST:
-
-
                     Task selected_item;
                     if (data == null) {
                         return;
@@ -315,20 +273,17 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
                     commentary = data.getStringExtra(COMMENTARY_EXTRA);
                     item_id = data.getIntExtra(ITEM_ID_EXTRA, 0);
                     //get list item and change it fields
-                    selected_item = mTaskListArray.get(item_id);
+                    selected_item = mTaskListRealmResults.get(item_id);
 
                     Realm.getDefaultInstance().beginTransaction();
                     selected_item.setTitle(title);
                     selected_item.setCommentary(commentary);
                     Realm.getDefaultInstance().commitTransaction();
-
-                    mTaskListAdapter.notifyDataSetChanged();
                     break;
                 case SETTINGS_REQUEST:
                     mBackgroundColors = mSharedPrefsDeserializer.getTaskBackgroundColors();
                     mTaskListAdapter.setBackgroundColors(mBackgroundColors);
-                    //mTaskAutoFinishManager.unregisterAllTasksAutoFinish(mTaskListArray);
-                    mTaskAutoFinishManager.updateTaskAutoFinishTime(mTaskListArray);
+                    mTaskAutoFinishManager.updateTaskAutoFinishTime(mTaskListRealmResults);
                     mTaskListAdapter.notifyDataSetChanged();
                     break;
             }
@@ -336,11 +291,12 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
     }
 
 
-
+    /*
     public void onSaveInstanceState(Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
         savedInstanceState.putParcelableArrayList(SAVED_TASK_LIST, mTaskListArray);
     }
+    */
 
     @Override
     public void onBackPressed() {
@@ -365,7 +321,6 @@ public class TaskListActivity extends AppCompatActivity implements MaterialDialo
     public void onPositive(int titleId) {
         switch (titleId){
             case R.string.dialog_delete_all_tasks:
-                mTaskListArray.clear();
                 mRealmIO.removeAllTasks();
                 mTaskListAdapter.notifyDataSetChanged();
                 break;

@@ -16,7 +16,6 @@
             </intent-filter>
         </activity>
         <activity android:name=".activity.TaskListActivity"/>
-        <activity android:name=".activity.NewTaskActivity"/>
         <activity android:name=".activity.EditTaskActivity"/>
         <activity android:name=".activity.SettingsActivity"
                   android:parentActivityName=".activity.TaskListActivity"/>

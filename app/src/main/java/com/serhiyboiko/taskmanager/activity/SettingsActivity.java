@@ -6,22 +6,16 @@ import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.annotation.ColorInt;
-import android.support.annotation.IntegerRes;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 
-import com.afollestad.materialdialogs.MaterialDialog;
 import com.afollestad.materialdialogs.color.ColorChooserDialog;
 import com.serhiyboiko.taskmanager.R;
 import com.serhiyboiko.taskmanager.dialog.MaterialDialogFragment;
-import com.serhiyboiko.taskmanager.dialog.MaterialDialogInputFragment;
+import com.serhiyboiko.taskmanager.dialog.MaterialNumberInputDialogFragment;
 
-/**
- * Created by Amegar on 11.06.2016.
- */
 public class SettingsActivity extends AppCompatActivity implements ColorChooserDialog.ColorCallback,
-        SettingsActivityClickListener, MaterialDialogFragment.DialogListener, MaterialDialogInputFragment.DialogListener {
+        SettingsActivityClickListener, MaterialDialogFragment.DialogListener, MaterialNumberInputDialogFragment.DialogListener {
 
     final static String IDLE_TASK_BACKGROUND_COLOR = "idle_task_background_color";
     final static String STARTED_TASK_BACKGROUND_COLOR = "started_task_background_color";
@@ -41,6 +35,7 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
         private Preference mRestoreDefaultColors;
         private Preference mMaxTaskDuration;
         private SharedPreferences mSharedPreferences;
+        private AppCompatActivity mActivity;
 
 
         @Override
@@ -50,6 +45,7 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
             mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
             mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
             mListener = (SettingsActivityClickListener)getActivity();
+            mActivity = (AppCompatActivity) getActivity();
 
             mIdleTaskColor = findPreference(IDLE_TASK_BACKGROUND_COLOR);
             mIdleTaskColor.setOnPreferenceClickListener(this);
@@ -67,11 +63,12 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
             mMaxTaskDuration.setOnPreferenceClickListener(this);
             int currentMaxDuration = mSharedPreferences.getInt(MAXIMUM_TASK_DURATION, 0);
             if (currentMaxDuration > 0){
-                mMaxTaskDuration.setSummary("Tasks will finish automatically in " + currentMaxDuration + " sec");
+                mMaxTaskDuration.setSummary(String.format(mActivity.getString(R.string.task_will_finish_at_sec), currentMaxDuration));
             } else {
-                mMaxTaskDuration.setSummary("Tasks will not finish automatically");
+                mMaxTaskDuration.setSummary(mActivity.getString(R.string.task_will_not_finish));
             }
         }
+
 
         @Override
         public boolean onPreferenceClick(Preference preference) {
@@ -87,9 +84,9 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
                 case MAXIMUM_TASK_DURATION:
                     int currentMaxDuration = mSharedPreferences.getInt(MAXIMUM_TASK_DURATION, 0);
                     if (currentMaxDuration > 0){
-                        mMaxTaskDuration.setSummary("Tasks will finish automatically in " + currentMaxDuration + " sec");
+                        mMaxTaskDuration.setSummary(String.format(mActivity.getString(R.string.task_will_finish_at_sec), currentMaxDuration));
                     } else {
-                        mMaxTaskDuration.setSummary("Tasks will not finish automatically");
+                        mMaxTaskDuration.setSummary(mActivity.getString(R.string.task_will_not_finish));
                     }
                     break;
             }
@@ -152,7 +149,7 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
                 break;
             case MAXIMUM_TASK_DURATION:
                 int currentMaxDuration = mSharedPreferences.getInt(MAXIMUM_TASK_DURATION, 0);
-                MaterialDialogInputFragment.newInstance(R.string.dialog_set_max_task_duration,
+                MaterialNumberInputDialogFragment.newInstance(R.string.dialog_set_max_task_duration,
                         R.string.dialog_set_max_task_duration_description, Integer.toString(currentMaxDuration))
                         .show(getSupportFragmentManager(), getString(R.string.dialog_set_max_task_duration));
                 break;

@@ -17,22 +17,15 @@ import com.daimajia.swipe.SwipeLayout;
 import com.daimajia.swipe.adapters.RecyclerSwipeAdapter;
 import com.serhiyboiko.taskmanager.R;
 import com.serhiyboiko.taskmanager.activity.EditTaskActivity;
-import com.serhiyboiko.taskmanager.activity.TaskListActivity;
 import com.serhiyboiko.taskmanager.model.Task;
 import com.serhiyboiko.taskmanager.utils.alarm_manager.TaskAutoFinishManager;
 import com.serhiyboiko.taskmanager.utils.realm_io.RealmIO;
-import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsSerializer;
 
-import java.util.ArrayList;
 import java.util.GregorianCalendar;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import io.realm.Realm;
+import io.realm.RealmResults;
 
-/**
- * Created by Amegar on 20.06.2016.
- */
 public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHolder>{
     public static final String START_DATE = "%02d.%02d.%4d %02d:%02d";
     public static final String END_DATE = " - %02d.%02d.%4d %02d:%02d";
@@ -40,12 +33,12 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
     private final static String HH_MM_SS = " %02d:%02d:%02d";
     public static final int BLACK_FONT_COLOUR = 0xCC404040;
     public static final int WHITE_FONT_COLOUR = 0xE5F1F1F1;
+    private static final String REQUEST_CODE_EXTRA = "request_code";
 
 
-    private ArrayList<Task> mTaskListArray;
+    private RealmResults<Task> mTaskRealmResults;
     private int[] mBackgroundColors;
     private Context mContext;
-    private SharedPrefsSerializer mSharedPrefsSerializer;
     private TaskAutoFinishManager mTaskAutoFinishManager;
     private RealmIO mRealmIO;
 
@@ -59,13 +52,12 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
     private final static int STARTED_TASK = 1;
     private final static int ENDED_TASK = 2;
 
-    public TaskListAdapter(Context context, ArrayList<Task> taskList,
-                           int[] backgroundColors, SharedPrefsSerializer sharedPrefsSerializer,
+    public TaskListAdapter(Context context, RealmResults<Task> taskList,
+                           int[] backgroundColors,
                            TaskAutoFinishManager taskAutoFinishManager, RealmIO realmIO){
-        mTaskListArray = taskList;
+        mTaskRealmResults = taskList;
         mBackgroundColors = backgroundColors;
         mContext = context;
-        mSharedPrefsSerializer = sharedPrefsSerializer;
         mTaskAutoFinishManager = taskAutoFinishManager;
         mRealmIO = realmIO;
 
@@ -81,11 +73,16 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
     }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder (ViewHolder holder, int position){
         mItemManger.bindView(holder.itemView, position);
+        Task item = mTaskRealmResults.get(position);
+        onBindViewHolder(holder, item);
+    }
+
+    //потрібен для вимірювання розмірів в'юшки при автогенерації бо RealmResults не обновляєтсья в циклах
+    public void onBindViewHolder(ViewHolder holder, Task item) {
         int currentBackgroundColor;
         StringBuilder date = new StringBuilder();
-        Task item = mTaskListArray.get(position);
         holder.title.setText(item.getTitle());
         holder.commentary.setText(item.getCommentary());
         setDateText(holder, date, item);
@@ -177,9 +174,14 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
         mBackgroundColors = backgroundColors;
     }
 
+    public void setTaskRealmResults (RealmResults<Task> realmResults){
+        mTaskRealmResults = realmResults;
+        notifyDataSetChanged();
+    }
+
     @Override
     public int getItemCount() {
-        return mTaskListArray.size();
+        return mTaskRealmResults.size();
     }
 
     @Override
@@ -245,20 +247,20 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
         public void onClick(View v) {
             int viewId = v.getId();
             int position = getAdapterPosition();
-            Task item = mTaskListArray.get(position);
+            Task item = mTaskRealmResults.get(position);
 
             switch (viewId){
                 case R.id.start_stop_task_image_button:
                     if (item.getTaskStart() == null) {
-                        Realm.getDefaultInstance().beginTransaction();
+                        mRealmIO.getRealm().beginTransaction();
                         item.setTaskStart(new GregorianCalendar());
-                        Realm.getDefaultInstance().commitTransaction();
+                        mRealmIO.getRealm().commitTransaction();
                         mTaskAutoFinishManager.registerTaskForAutoFinish(item);
                     } else {
                         if (item.getTaskEnd() == null) {
-                            Realm.getDefaultInstance().beginTransaction();
+                            mRealmIO.getRealm().beginTransaction();
                             item.setTaskEnd(new GregorianCalendar());
-                            Realm.getDefaultInstance().commitTransaction();
+                            mRealmIO.getRealm().commitTransaction();
                             long elapsedTimeInMills = item.getTimeSpend();
                             int hours = (int) TimeUnit.MILLISECONDS.toHours(elapsedTimeInMills);
                             int minutes = (int) (TimeUnit.MILLISECONDS.toMinutes(elapsedTimeInMills) -
@@ -268,57 +270,54 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                             Snackbar.make(((Activity)mContext).findViewById(R.id.task_list_activity_container),
                                     mContext.getString(R.string.task_finished_in) + String.format(HH_MM_SS, hours, minutes, seconds), Snackbar.LENGTH_SHORT).show();
                             mTaskAutoFinishManager.unregisterTaskAutoFinish(item);
-                        } else {
-                            Snackbar.make(((Activity)mContext).findViewById(R.id.task_list_activity_container),
-                                    mContext.getString(R.string.task_finished), Snackbar.LENGTH_SHORT).show();
                         }
                     }
                     notifyDataSetChanged();
                     break;
                 case R.id.delete_task_image_button:
                     swipeLayout.close(false);
-                    Task taskToDelete = mTaskListArray.get(position);
+                    Task taskToDelete = mTaskRealmResults.get(position);
                     mTaskAutoFinishManager.unregisterTaskAutoFinish(item);
-                    Realm.getDefaultInstance().beginTransaction();
+                    mRealmIO.getRealm().beginTransaction();
                     mRealmIO.removeTask(taskToDelete);
-                    mTaskListArray.remove(position);
-                    Realm.getDefaultInstance().commitTransaction();
+                    mRealmIO.getRealm().commitTransaction();
                     notifyDataSetChanged();
                     break;
                 case R.id.edit_task_image_button:
                     swipeLayout.close(false);
                     Intent intent = new Intent(mContext, EditTaskActivity.class);
                     intent.putExtra(ITEM_ID_EXTRA, position);
-                    intent.putExtra(TITLE_EXTRA, mTaskListArray.get(position).getTitle());
-                    intent.putExtra(COMMENTARY_EXTRA, mTaskListArray.get(position).getCommentary());
+                    intent.putExtra(TITLE_EXTRA, mTaskRealmResults.get(position).getTitle());
+                    intent.putExtra(COMMENTARY_EXTRA, mTaskRealmResults.get(position).getCommentary());
+                    intent.putExtra(REQUEST_CODE_EXTRA, EDIT_TASK_REQUEST);
                     ((Activity)mContext).startActivityForResult(intent, EDIT_TASK_REQUEST);
                     break;
                 case R.id.one_step_back_image_button:
-                    swipeLayout.close(false);
                     if(item.getTaskEnd() != null){
-                        Realm.getDefaultInstance().beginTransaction();
+                        mRealmIO.getRealm().beginTransaction();
                         item.setTaskEnd(null);
                         item.setTaskRestart(new GregorianCalendar());
-                        Realm.getDefaultInstance().commitTransaction();
+                        mRealmIO.getRealm().commitTransaction();
                         mTaskAutoFinishManager.registerTaskForAutoFinish(item);
                     } else {
-                        Realm.getDefaultInstance().beginTransaction();
+                        mTaskAutoFinishManager.unregisterTaskAutoFinish(item);
+                        mRealmIO.getRealm().beginTransaction();
                         item.setTaskStart(null);
                         item.setTaskRestart(null);
-                        Realm.getDefaultInstance().commitTransaction();
-                        mTaskAutoFinishManager.unregisterTaskAutoFinish(item);
+                        mRealmIO.getRealm().commitTransaction();
                     }
                     notifyDataSetChanged();
+                    swipeLayout.close(true);
                     break;
                 case R.id.cancel_task_execution_image_button:
-                    swipeLayout.close(false);
-                    Realm.getDefaultInstance().beginTransaction();
+                    mTaskAutoFinishManager.unregisterTaskAutoFinish(item);
+                    mRealmIO.getRealm().beginTransaction();
                     item.setTaskEnd(null);
                     item.setTaskStart(null);
                     item.setTaskRestart(null);
-                    Realm.getDefaultInstance().commitTransaction();
-                    mTaskAutoFinishManager.unregisterTaskAutoFinish(item);
+                    mRealmIO.getRealm().commitTransaction();
                     notifyDataSetChanged();
+                    swipeLayout.close(true);
                     break;
             }
 

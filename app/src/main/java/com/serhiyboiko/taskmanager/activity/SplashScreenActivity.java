@@ -1,16 +1,12 @@
 package com.serhiyboiko.taskmanager.activity;
 
-import android.animation.Animator;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.animation.Animation;
-import android.view.animation.AnimationSet;
 import android.view.animation.AnimationUtils;
-import android.view.animation.TranslateAnimation;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 

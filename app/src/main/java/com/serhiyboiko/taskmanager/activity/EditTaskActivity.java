@@ -3,15 +3,14 @@ package com.serhiyboiko.taskmanager.activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.RelativeLayout;
 
 import com.serhiyboiko.taskmanager.R;
 
@@ -27,8 +26,13 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
     private ImageButton mCommentaryVoiceButton;
     private int mSelectedVoiceInputId;
     private int mItemId;
+    private int mRequestCode;
 
-    private final static int VOICE_RECOGNITION_REQUEST = 1;
+    private static final int CREATE_NEW_TASK_REQUEST = 1;
+    private static final int EDIT_TASK_REQUEST = 2;
+    private final static int VOICE_RECOGNITION_REQUEST = 3;
+
+    private static final String REQUEST_CODE_EXTRA = "request_code";
 
 
 
@@ -36,12 +40,23 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.task_editor_activity);
-        getSupportActionBar().setTitle(R.string.edit_task_activity_title);
         bindActivity();
 
-        mItemId = getIntent().getIntExtra(TaskListActivity.ITEM_ID_EXTRA, -1);
-        mTitleEditText.setText(getIntent().getStringExtra(TaskListActivity.TITLE_EXTRA));
-        mCommentaryEditText.setText(getIntent().getStringExtra(TaskListActivity.COMMENTARY_EXTRA));
+        Intent intent = getIntent();
+
+        mRequestCode = intent.getIntExtra(REQUEST_CODE_EXTRA, -1);
+
+        switch (mRequestCode){
+            case EDIT_TASK_REQUEST:
+                getSupportActionBar().setTitle(R.string.edit_task_activity_title);
+                mItemId = intent.getIntExtra(TaskListActivity.ITEM_ID_EXTRA, -1);
+                mTitleEditText.setText(intent.getStringExtra(TaskListActivity.TITLE_EXTRA));
+                mCommentaryEditText.setText(intent.getStringExtra(TaskListActivity.COMMENTARY_EXTRA));
+                break;
+            case CREATE_NEW_TASK_REQUEST:
+                getSupportActionBar().setTitle(R.string.new_task_activity_title);
+                break;
+        }
 
         // Disable button if no recognition service is present
         PackageManager pm = getPackageManager();
@@ -78,7 +93,9 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                     return;
                 }
                 Intent taskData = new Intent();
-                taskData.putExtra(TaskListActivity.ITEM_ID_EXTRA, mItemId);
+                if (mRequestCode == EDIT_TASK_REQUEST){
+                    taskData.putExtra(TaskListActivity.ITEM_ID_EXTRA, mItemId);
+                }
                 taskData.putExtra(TaskListActivity.TITLE_EXTRA, title);
                 taskData.putExtra(TaskListActivity.COMMENTARY_EXTRA, commentary);
                 setResult(RESULT_OK, taskData);
@@ -123,16 +140,24 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
     {
         if (requestCode == VOICE_RECOGNITION_REQUEST && resultCode == RESULT_OK){
             ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            StringBuilder inputText = new StringBuilder();
-            for (int i = 0; i<matches.size(); i++){
-                inputText.append(" ").append(matches.get(i));
-            }
             switch (mSelectedVoiceInputId){
                 case R.id.edit_text_title_voice_recognition:
-                    mTitleEditText.setText(mTitleEditText.getText().append(inputText.toString()));
+                    StringBuilder title = new StringBuilder(mTitleEditText.getText());
+                    if (!title.toString().equals("")){
+                        Log.i("!title.toString()", !title.toString().equals("")+"");
+                        Log.i("!title.equals(\"\")", !title.equals("")+"");
+                        title.append(" ");
+                    }
+                    title.append(matches.get(0));
+                    mTitleEditText.setText(title);
                     break;
                 case R.id.edit_text_commentary_voice_recognition:
-                    mCommentaryEditText.setText(mCommentaryEditText.getText().append(inputText.toString()));
+                    StringBuilder commentary = new StringBuilder(mTitleEditText.getText());
+                    if (!commentary.toString().equals("")){
+                        commentary.append(" ");
+                    }
+                    commentary.append(matches.get(0));
+                    mCommentaryEditText.setText(commentary);
                     break;
             }
         }
