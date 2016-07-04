@@ -2,6 +2,7 @@
 <resources>
     <color name="colorPrimary">#4fc3f7</color>
     <color name="toolbarActionPressed">#81d4fa</color>
+    <color name="colorPrimaryLight">#b3e5fc</color>
     <color name="colorPrimaryDark">#42a5f5</color>
     <color name="colorAccent">#f48fb1</color>
     <color name="colorAccentDark">#f06292</color>

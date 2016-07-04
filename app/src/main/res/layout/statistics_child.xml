@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+             android:id="@+id/child_container"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content">
+
+    <ProgressBar
+        android:id="@+id/child_progress"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:maxHeight="100dp"
+        android:progressDrawable="@drawable/task_relative_time_bar_drawable"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        />
+
+    <TextView
+        android:id="@+id/statistics_child_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:text="@string/dummy_text"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:padding="4dp"/>
+
+    <TextView
+        android:id="@+id/statistics_child_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|center_vertical"
+        android:text="@string/dummy_text"
+        android:textSize="16sp"
+        android:padding="4dp"
+        />
+
+
+
+</FrameLayout>

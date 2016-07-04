@@ -13,6 +13,9 @@ import android.widget.TextView;
 import com.serhiyboiko.taskmanager.R;
 
 public class SplashScreenActivity extends AppCompatActivity {
+
+    Handler mHandler;
+    Runnable mRunnable;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,13 +34,21 @@ public class SplashScreenActivity extends AppCompatActivity {
         page2.startAnimation(page2Animation);
         page1.startAnimation(page1Animation);
         appName.startAnimation(appNameAnimation);
-        new Handler().postDelayed(new Runnable() {
+        mHandler = new Handler();
+        mRunnable = new Runnable() {
             @Override
             public void run() {
                 startActivity(new Intent(SplashScreenActivity.this, TaskListActivity.class));
                 SplashScreenActivity.this.finish();
                 SplashScreenActivity.this.overridePendingTransition(0, R.anim.splash_activity_out);
             }
-        }, 2000);
+        };
+        mHandler.postDelayed(mRunnable, 2000);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mHandler.removeCallbacks(mRunnable);
     }
 }

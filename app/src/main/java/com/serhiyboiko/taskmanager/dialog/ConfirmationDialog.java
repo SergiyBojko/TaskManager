@@ -10,12 +10,12 @@ import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.serhiyboiko.taskmanager.R;
 
-public class MaterialDialogFragment extends DialogFragment {
+public class ConfirmationDialog extends DialogFragment {
 
     final static String TITLE_ID = "title_id";
 
-    public static MaterialDialogFragment newInstance(int titleId) {
-        MaterialDialogFragment frag = new MaterialDialogFragment();
+    public static ConfirmationDialog newInstance(int titleId) {
+        ConfirmationDialog frag = new ConfirmationDialog();
         Bundle args = new Bundle();
         args.putInt(TITLE_ID, titleId);
         frag.setArguments(args);
@@ -35,7 +35,7 @@ public class MaterialDialogFragment extends DialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         final int titleId = getArguments().getInt(TITLE_ID);
         Dialog dialog = new MaterialDialog.Builder(getActivity())
-                .title(getContext().getString(titleId))
+                .title(titleId)
                 .positiveText(R.string.ok_label)
                 .negativeText(R.string.md_cancel_label)
                 .onPositive(new MaterialDialog.SingleButtonCallback() {

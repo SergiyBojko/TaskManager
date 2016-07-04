@@ -8,14 +8,23 @@ import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import java.util.Calendar;
 import java.util.GregorianCalendar;
 
+import io.realm.RealmList;
 import io.realm.RealmObject;
 import io.realm.annotations.PrimaryKey;
 
 public class Task extends RealmObject implements Parcelable{
-    private final static long CALENDAR_EMPTY = -1;
-    private static final String NEXT_TASK_ID = "next_task_id";
+
+    public final static int ONE_TIME = 0;
+    public final static int EVERY_HOUR = 1;
+    public final static int EVERY_DAY = 2;
+    public final static int EVERY_WEEK = 3;
+    public final static int EVERY_MONTH = 4;
+    public final static int EVERY_YEAR = 5;
+
+    public static final String NEXT_TASK_ID = "next_task_id";
 
     @PrimaryKey
     private int mId;
@@ -24,48 +33,36 @@ public class Task extends RealmObject implements Parcelable{
     private long mTaskStart;
     private long mTaskEnd;
     private long mTaskRestart;
-    private long mTimeSpend;
+    private long mTimeSpent;
+    private int mTaskMaxDuration;
+    private RealmList<PauseInfo> mPauseInfoList;
+    private String mAvatarLocation;
+    private int mPeriod;
+    private boolean mIsPaused;
+    //tasks that are deleted from app become hidden to provide statistics information
+    private boolean mIsHidden;
+    private RealmList<TaskExecInfo> mTaskExecInfoList;
 
     public Task(){}
 
-    public Task(Context context, String commentary, String title){
+    public Task(Context context, String commentary, String title, int taskMaxDuration, int period, String avatarLocation){
         mTitle = title;
         mCommentary = commentary;
+        mTaskMaxDuration = taskMaxDuration;
+        mPeriod = period;
+        mAvatarLocation = avatarLocation;
+
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         mId = sp.getInt(NEXT_TASK_ID, 0);
+        int nextId = mId + 1;
+        sp.edit().putInt(NEXT_TASK_ID, nextId).apply();
 
-        int nextId = ++mId;
-        sp.edit().putInt(NEXT_TASK_ID, nextId).commit();
-
-        Log.i("created new task", this.toString());
+        Log.i("created new task", "id = " + mId);
+        Log.i("created new task", "AvatarLocation = " + mAvatarLocation);
     }
 
     private Task(Parcel parcel) {
-        mTitle = parcel.readString();
-        mCommentary = parcel.readString();
-        long startTimeInMills;
-        long endTimeInMills;
-        long restartTimeInMills;
-        startTimeInMills = parcel.readLong();
-
-        if (startTimeInMills != CALENDAR_EMPTY){
-            mTaskStart = startTimeInMills;
-            endTimeInMills = parcel.readLong();
-            if (endTimeInMills != CALENDAR_EMPTY){
-                mTaskEnd = endTimeInMills;
-                mTimeSpend = parcel.readLong();
-            }
-        }
-        restartTimeInMills = parcel.readLong();
-        if (restartTimeInMills != CALENDAR_EMPTY){
-            mTaskRestart = restartTimeInMills;
-        }
-
-        mId = parcel.readInt();
-
-        Log.i("created from parcel", this.toString());
     }
-
 
     public int getId() {
         return mId;
@@ -97,12 +94,34 @@ public class Task extends RealmObject implements Parcelable{
     }
 
     public void setTaskEnd(GregorianCalendar taskEnd) {
+        if (isPaused()){
+            mIsPaused = false;
+            if (mPauseInfoList.size() > 0){
+                PauseInfo lastPause = mPauseInfoList.get(mPauseInfoList.size()-1);
+                lastPause.finish();
+            }
+        }
+
         if (taskEnd != null){
             mTaskEnd = taskEnd.getTimeInMillis();
-            mTimeSpend = mTaskEnd - mTaskStart;
+            int totalPauseDuration = getTotalPauseDuration();
+            if (mTaskRestart == 0){
+                mTimeSpent += mTaskEnd - mTaskStart - totalPauseDuration;
+            } else {
+                mTimeSpent += mTaskEnd - mTaskRestart - totalPauseDuration;
+            }
+
         } else {
-            mTaskEnd = 0;
-            mTimeSpend = 0;
+            if (mTaskRestart != 0 || mTaskStart != 0){
+                //task state finished -> running
+                mTimeSpent += new GregorianCalendar().getTimeInMillis() - mTaskEnd;
+                mTaskEnd = 0;
+            } else {
+                //task state finished -> idle or running -> idle
+                mTimeSpent = 0;
+                mTaskEnd = 0;
+            }
+
         }
     }
 
@@ -120,15 +139,17 @@ public class Task extends RealmObject implements Parcelable{
             mTaskStart = taskStart.getTimeInMillis();
         } else {
             mTaskStart = 0;
+            mTimeSpent = 0;
+            mPauseInfoList.deleteAllFromRealm();
         }
     }
 
-    public long getTimeSpend() {
-        return mTimeSpend;
+    public long getTimeSpent() {
+        return mTimeSpent;
     }
 
-    public void setTimeSpend(long timeSpend) {
-        mTimeSpend = timeSpend;
+    public void setTimeSpent(int timeSpent) {
+        mTimeSpent = timeSpent;
     }
 
     public GregorianCalendar getTaskRestart() {
@@ -149,6 +170,101 @@ public class Task extends RealmObject implements Parcelable{
 
     }
 
+    public int getTaskMaxDuration() {
+        return mTaskMaxDuration;
+    }
+
+    public void setTaskMaxDuration(int taskMaxDuration) {
+        mTaskMaxDuration = taskMaxDuration;
+    }
+
+    public String getAvatarLocation() {
+        return mAvatarLocation;
+    }
+
+    public void setAvatarLocation(String avatarLocation) {
+        mAvatarLocation = avatarLocation;
+    }
+
+    public int getPeriod(){
+        return mPeriod;
+    }
+
+    public int getPeriodInMills() {
+        GregorianCalendar calendar;
+        long taskStartTime = mTaskStart;
+        long taskNextStartTime;
+        int period;
+
+        switch (mPeriod){
+            case ONE_TIME:
+                return 0;
+            case EVERY_HOUR:
+                //return 1000*60*60;
+                return 1000*10;
+            case EVERY_DAY:
+                return 1000*60*60*24;
+            case EVERY_WEEK:
+                return 1000*60*60*24*7;
+            case EVERY_MONTH:
+                calendar = new GregorianCalendar()     ;
+                calendar.setTimeInMillis(taskStartTime);
+                calendar.add(Calendar.MONTH, 1);
+                taskNextStartTime = calendar.getTimeInMillis();
+                period = (int)(taskNextStartTime - taskStartTime);
+                return period;
+            case EVERY_YEAR:
+                calendar = new GregorianCalendar();
+                calendar.setTimeInMillis(taskStartTime);
+                calendar.add(Calendar.YEAR, 1);
+                taskNextStartTime = calendar.getTimeInMillis();
+                period = (int)(taskNextStartTime - taskStartTime);
+                return period;
+            default:
+                return 0;
+        }
+    }
+
+    public void setPeriod(int period) {
+        mPeriod = period;
+    }
+
+    public RealmList<PauseInfo> getPauseInfoList() {
+        return mPauseInfoList;
+    }
+
+    public void setPaused(boolean paused) {
+        mIsPaused = paused;
+    }
+
+    public boolean isPaused() {
+        return mIsPaused;
+    }
+
+    public boolean isHidden() {
+        return mIsHidden;
+    }
+
+    public void setHidden(boolean hidden) {
+        mIsHidden = hidden;
+    }
+
+    public RealmList<TaskExecInfo> getTaskExecInfoList() {
+        return mTaskExecInfoList;
+    }
+
+    public void setTaskExecInfoList(RealmList<TaskExecInfo> taskExecInfoList) {
+        mTaskExecInfoList = taskExecInfoList;
+    }
+
+    public int getTotalPauseDuration() {
+        int totalPauseDuration = 0;
+        for (PauseInfo pauseInfo:mPauseInfoList){
+            totalPauseDuration += pauseInfo.getPauseDuration();
+        }
+        return totalPauseDuration;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -157,27 +273,6 @@ public class Task extends RealmObject implements Parcelable{
     //implemented parcelable methods to allow saving task in Bundle
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(mTitle);
-        dest.writeString(mCommentary);
-        if (mTaskStart > 0){
-            dest.writeLong(mTaskStart);
-        } else {
-            dest.writeLong(CALENDAR_EMPTY);
-        }
-        if (mTaskEnd > 0){
-            dest.writeLong(mTaskEnd);
-            dest.writeLong(mTimeSpend);
-        } else {
-            dest.writeLong(CALENDAR_EMPTY);
-        }
-        if (mTaskRestart > 0){
-            dest.writeLong(mTaskRestart);
-        } else {
-            dest.writeLong(CALENDAR_EMPTY);
-        }
-
-        dest.writeInt(mId);
-
     }
 
     public static final Parcelable.Creator<Task> CREATOR = new Parcelable.Creator<Task>() {
@@ -193,5 +288,13 @@ public class Task extends RealmObject implements Parcelable{
     @Override
     public String toString() {
         return mId + " " + mTitle + " " + mCommentary + " " +  mTaskStart + " " +  mTaskEnd;
+    }
+
+    public Object getTotalDuration() {
+        long taskTotalDuration = 0;
+        for(TaskExecInfo taskExecInfo:mTaskExecInfoList){
+            taskTotalDuration += taskExecInfo.getDuration();
+        }
+        return taskTotalDuration;
     }
 }

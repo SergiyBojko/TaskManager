@@ -11,11 +11,11 @@ import android.support.v7.app.AppCompatActivity;
 
 import com.afollestad.materialdialogs.color.ColorChooserDialog;
 import com.serhiyboiko.taskmanager.R;
-import com.serhiyboiko.taskmanager.dialog.MaterialDialogFragment;
-import com.serhiyboiko.taskmanager.dialog.MaterialNumberInputDialogFragment;
+import com.serhiyboiko.taskmanager.dialog.ConfirmationDialog;
+import com.serhiyboiko.taskmanager.dialog.NumberInputDialog;
 
 public class SettingsActivity extends AppCompatActivity implements ColorChooserDialog.ColorCallback,
-        SettingsActivityClickListener, MaterialDialogFragment.DialogListener, MaterialNumberInputDialogFragment.DialogListener {
+        SettingsActivityClickListener, ConfirmationDialog.DialogListener, NumberInputDialog.DialogListener {
 
     final static String IDLE_TASK_BACKGROUND_COLOR = "idle_task_background_color";
     final static String STARTED_TASK_BACKGROUND_COLOR = "started_task_background_color";
@@ -144,14 +144,14 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
                         .show();
                 break;
             case RESTORE_DEFAULT_COLORS:
-                MaterialDialogFragment.newInstance(R.string.dialog_restore_default_colors)
+                ConfirmationDialog.newInstance(R.string.dialog_restore_default_colors)
                         .show(getSupportFragmentManager(), getString(R.string.dialog_restore_default_colors));
                 break;
             case MAXIMUM_TASK_DURATION:
                 int currentMaxDuration = mSharedPreferences.getInt(MAXIMUM_TASK_DURATION, 0);
-                MaterialNumberInputDialogFragment.newInstance(R.string.dialog_set_max_task_duration,
+                NumberInputDialog.newInstance(R.string.dialog_set_default_task_duration,
                         R.string.dialog_set_max_task_duration_description, Integer.toString(currentMaxDuration))
-                        .show(getSupportFragmentManager(), getString(R.string.dialog_set_max_task_duration));
+                        .show(getSupportFragmentManager(), getString(R.string.dialog_set_default_task_duration));
                 break;
         }
 
@@ -180,13 +180,12 @@ public class SettingsActivity extends AppCompatActivity implements ColorChooserD
     @Override
     public void onInput(int titleId, CharSequence input) {
         switch (titleId){
-            case R.string.dialog_set_max_task_duration:
+            case R.string.dialog_set_default_task_duration:
                 String inputString = input.toString();
                 if (inputString.equals("")){
                     inputString = "0";
                 }
                 mSharedPreferences.edit().putInt(MAXIMUM_TASK_DURATION, Integer.parseInt(inputString)).commit();
-                setResult(RESULT_OK);
                 break;
 
         }

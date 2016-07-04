@@ -42,10 +42,33 @@
     <string name="dialog_delete_all_tasks">Delete all tasks?</string>
     <string name="enter_title_voice_rec_prompt">Title</string>
     <string name="enter_commentary_voice_rec_prompt">Description</string>
-    <string name="pref_maximum_task_duration">Max task duration</string>
-    <string name="dialog_set_max_task_duration">Max task duration</string>
+    <string name="pref_default_task_duration">Default task duration</string>
+    <string name="dialog_set_default_task_duration">Default task duration</string>
     <string name="pref_other_title">Other</string>
     <string name="dialog_set_max_task_duration_description">(0 - tasks will not end automatically)</string>
     <string name="task_will_finish_at_sec">Tasks will finish automatically in %d sec</string>
     <string name="task_will_not_finish">Tasks will not finish automatically</string>
+    <string name="edit_text_max_task_duration_hint">Max task duration</string>
+    <string name="task_exec_frequency">Task execution frequency</string>
+    <string name="image_crop_activity_title">Choose a miniature</string>
+    <string name="image_source_picker_dialog_title">Select image source</string>
+    <string name="dialog_delete_all_tasks_forever">Delete statistics of deleted tasks?</string>
+    <string name="menu_refresh">Refresh statistics</string>
+    <string name="menu_remove_all_forever">Remove all forever</string>
+    <string-array name="task_frequency_variants">
+        <item>Execute once</item>
+        <item>Repeat every hour</item>
+        <item>Repeat every day</item>
+        <item>Repeat every week</item>
+        <item>Repeat every month</item>
+        <item>Repeat every year</item>
+    </string-array>
+    <string-array name="image_source_picker_dialog_choices">
+        <item>Gallery</item>
+        <item>Camera</item>
+    </string-array>
+    <string-array name="task_list_tabs">
+        <item>Task list</item>
+        <item>Statistics</item>
+    </string-array>
 </resources>

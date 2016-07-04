@@ -9,7 +9,7 @@ import android.text.InputType;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 
-public class MaterialNumberInputDialogFragment extends DialogFragment {
+public class NumberInputDialog extends DialogFragment {
 
     final static String TITLE_ID = "title_id";
     final static String CONTENT = "content";
@@ -19,8 +19,8 @@ public class MaterialNumberInputDialogFragment extends DialogFragment {
 
 
 
-    public static MaterialNumberInputDialogFragment newInstance(int titleId, int content, String prefill) {
-        MaterialNumberInputDialogFragment frag = new MaterialNumberInputDialogFragment();
+    public static NumberInputDialog newInstance(int titleId, int content, String prefill) {
+        NumberInputDialog frag = new NumberInputDialog();
         Bundle args = new Bundle();
         args.putInt(TITLE_ID, titleId);
         args.putInt(CONTENT, content);

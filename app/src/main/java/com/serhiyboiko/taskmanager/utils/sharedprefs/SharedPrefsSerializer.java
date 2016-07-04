@@ -18,7 +18,7 @@ public class SharedPrefsSerializer {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt(SORTING_TYPE, sortingId);
-        editor.commit();
+        editor.apply();
     }
 
 }

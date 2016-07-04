@@ -3,7 +3,7 @@
     <dimen name="activity_vertical_margin">5dp</dimen>
     <dimen name="button_margin">5dp</dimen>
     <dimen name="list_item_padding">3dp</dimen>
-    <dimen name="item_time_text_size">10sp</dimen>
+    <dimen name="item_time_text_size">12sp</dimen>
     <dimen name="task_editor_edit_text_top_margin">100dp</dimen>
     <dimen name="toolbar_action_view_padding_left">4dp</dimen>
     <dimen name="toolbar_action_view_padding_right">8dp</dimen>
@@ -16,4 +16,5 @@
     <dimen name="start_stop_image_button_padding">8dp</dimen>
     <dimen name="start_stop_image_button_corners">4dp</dimen>
     <dimen name="start_stop_image_button_shift">2dp</dimen>
+    <dimen name="avatar_size">80dp</dimen>
 </resources>

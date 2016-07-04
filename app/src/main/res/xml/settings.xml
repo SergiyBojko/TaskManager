@@ -19,6 +19,6 @@
         android:title="@string/pref_other_title">
         <Preference
             android:key="maximum_task_duration"
-            android:title="@string/pref_maximum_task_duration"/>
+            android:title="@string/pref_default_task_duration"/>
     </PreferenceCategory>
 </PreferenceScreen>
