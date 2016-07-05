@@ -498,7 +498,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
                         selectedItem.setCommentary(commentary);
                     }
 
-                    if (!currentAvatarPath.equals(avatarPath)) {
+                    if (currentAvatarPath == null || !currentAvatarPath.equals(avatarPath)) {
                         selectedItem.setAvatarLocation(avatarPath);
                     }
                     mRealmIO.getRealm().commitTransaction();

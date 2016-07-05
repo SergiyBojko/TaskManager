@@ -33,7 +33,7 @@ public class Task extends RealmObject implements Parcelable{
     private long mTaskStart;
     private long mTaskEnd;
     private long mTaskRestart;
-    private long mTimeSpent;
+    private long mTimeSpend;
     private int mTaskMaxDuration;
     private RealmList<PauseInfo> mPauseInfoList;
     private String mAvatarLocation;
@@ -106,19 +106,19 @@ public class Task extends RealmObject implements Parcelable{
             mTaskEnd = taskEnd.getTimeInMillis();
             int totalPauseDuration = getTotalPauseDuration();
             if (mTaskRestart == 0){
-                mTimeSpent += mTaskEnd - mTaskStart - totalPauseDuration;
+                mTimeSpend += mTaskEnd - mTaskStart - totalPauseDuration;
             } else {
-                mTimeSpent += mTaskEnd - mTaskRestart - totalPauseDuration;
+                mTimeSpend += mTaskEnd - mTaskRestart - totalPauseDuration;
             }
 
         } else {
             if (mTaskRestart != 0 || mTaskStart != 0){
                 //task state finished -> running
-                mTimeSpent += new GregorianCalendar().getTimeInMillis() - mTaskEnd;
+                mTimeSpend += new GregorianCalendar().getTimeInMillis() - mTaskEnd;
                 mTaskEnd = 0;
             } else {
                 //task state finished -> idle or running -> idle
-                mTimeSpent = 0;
+                mTimeSpend = 0;
                 mTaskEnd = 0;
             }
 
@@ -139,17 +139,17 @@ public class Task extends RealmObject implements Parcelable{
             mTaskStart = taskStart.getTimeInMillis();
         } else {
             mTaskStart = 0;
-            mTimeSpent = 0;
+            mTimeSpend = 0;
             mPauseInfoList.deleteAllFromRealm();
         }
     }
 
-    public long getTimeSpent() {
-        return mTimeSpent;
+    public long getTimeSpend() {
+        return mTimeSpend;
     }
 
-    public void setTimeSpent(int timeSpent) {
-        mTimeSpent = timeSpent;
+    public void setTimeSpend(int timeSpend) {
+        mTimeSpend = timeSpend;
     }
 
     public GregorianCalendar getTaskRestart() {

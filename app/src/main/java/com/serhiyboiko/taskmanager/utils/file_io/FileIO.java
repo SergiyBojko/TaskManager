@@ -40,8 +40,10 @@ public class FileIO {
     }
 
     public static void removeFile (String path){
-        File file = new File(path);
-        file.delete();
+        if(path != null && !path.equals("")){
+            File file = new File(path);
+            file.delete();
+        }
     }
 
     private static boolean isExternalStorageWritable() {

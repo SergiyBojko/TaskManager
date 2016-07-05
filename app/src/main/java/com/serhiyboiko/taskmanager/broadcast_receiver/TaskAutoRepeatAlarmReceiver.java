@@ -26,7 +26,7 @@ public class TaskAutoRepeatAlarmReceiver extends BroadcastReceiver {
         taskToRestart.setTaskStart(new GregorianCalendar());
         taskToRestart.setTaskRestart(null);
         taskToRestart.setTaskEnd(null);
-        taskToRestart.setTimeSpent(0);
+        taskToRestart.setTimeSpend(0);
         realmIO.getRealm().commitTransaction();
         new TaskManager(context).registerTask(taskToRestart);
         //Toast.makeText(context, "autorestart", Toast.LENGTH_SHORT).show();

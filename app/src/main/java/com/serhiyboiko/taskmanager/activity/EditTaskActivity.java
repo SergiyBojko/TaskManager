@@ -36,6 +36,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 
@@ -92,8 +94,14 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                 mMaxTaskDurationEditText.setText(String.valueOf(intent.getIntExtra(TaskListActivity.MAX_DURATION_EXTRA, 0)));
                 mTaskFrequencySpinner.setSelection(intent.getIntExtra(TaskListActivity.TASK_FREQUENCY_EXTRA, 0));
                 String avatarPath = intent.getStringExtra(TaskListActivity.AVATAR_PATH_EXTRA);
+
+                if(avatarPath == null){
+                    avatarPath = "";
+                }
+
                 if (!avatarPath.equals("")){
-                    mTaskAvatar.setImageURI(Uri.parse(avatarPath));
+                    Bitmap avatar = BitmapFactory.decodeFile(avatarPath);
+                    mTaskAvatar.setImageBitmap(avatar);
                 }
 
                 break;
@@ -149,6 +157,11 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                 String commentary = mCommentaryEditText.getText().toString();
                 int maxDuration = Integer.parseInt(mMaxTaskDurationEditText.getText().toString());
                 int taskFrequency = mTaskFrequencySpinner.getSelectedItemPosition();
+                int taskPeriodInMills = calculateTaskPeriod(taskFrequency);
+                if(taskPeriodInMills != 0 && maxDuration*1000 > taskPeriodInMills){
+                    mMaxTaskDurationEditText.setError(getString(R.string.duration_must_be_lower_than_frequency));
+                    return;
+                }
                 BitmapDrawable avatarDrawable = (BitmapDrawable)mTaskAvatar.getDrawable();
 
                 if (avatarDrawable != null){
@@ -190,6 +203,43 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
             }
         });
         return super.onCreateOptionsMenu(menu);
+    }
+
+    private int calculateTaskPeriod(int taskFrequency) {
+
+        GregorianCalendar calendar;
+        long taskStartTime = System.currentTimeMillis();
+        long taskNextStartTime;
+        int period;
+
+        switch (taskFrequency){
+            case Task.ONE_TIME:
+                return 0;
+            case Task.EVERY_HOUR:
+                //return 1000*60*60;
+                return 1000*10;
+            case Task.EVERY_DAY:
+                return 1000*60*60*24;
+            case Task.EVERY_WEEK:
+                return 1000*60*60*24*7;
+            case Task.EVERY_MONTH:
+                calendar = new GregorianCalendar()     ;
+                calendar.setTimeInMillis(taskStartTime);
+                calendar.add(Calendar.MONTH, 1);
+                taskNextStartTime = calendar.getTimeInMillis();
+                period = (int)(taskNextStartTime - taskStartTime);
+                return period;
+            case Task.EVERY_YEAR:
+                calendar = new GregorianCalendar();
+                calendar.setTimeInMillis(taskStartTime);
+                calendar.add(Calendar.YEAR, 1);
+                taskNextStartTime = calendar.getTimeInMillis();
+                period = (int)(taskNextStartTime - taskStartTime);
+                return period;
+            default:
+                return 0;
+        }
+
     }
 
 

@@ -27,15 +27,15 @@ public class TaskExecInfo extends RealmObject {
         TaskExecInfo taskExecInfo;
         if (finishedTask.getTaskRestart() == null){
             //if task finished for first time create new statistics item
-            taskExecInfo = new TaskExecInfo(finishedTask.getTaskStart().getTimeInMillis(), finishedTask.getTaskEnd().getTimeInMillis(), finishedTask.getTimeSpent());
+            taskExecInfo = new TaskExecInfo(finishedTask.getTaskStart().getTimeInMillis(), finishedTask.getTaskEnd().getTimeInMillis(), finishedTask.getTimeSpend());
             TaskExecInfo managedTaskExecInfo = realmIO.putTaskExecInfo(taskExecInfo);
             finishedTask.getTaskExecInfoList().add(managedTaskExecInfo);
         } else {
             //else update existing
             taskExecInfo = realmIO.getRealm().where(TaskExecInfo.class).equalTo("mTaskStart", finishedTask.getTaskStart().getTimeInMillis()).findFirst();
             taskExecInfo.setTaskEnd(finishedTask.getTaskEnd().getTimeInMillis());
-            taskExecInfo.setDuration(finishedTask.getTimeSpent());
-            //taskExecInfo = new TaskExecInfo(finishedTask.getTaskRestart().getTimeInMillis(), finishedTask.getTaskEnd().getTimeInMillis(), finishedTask.getTimeSpent());
+            taskExecInfo.setDuration(finishedTask.getTimeSpend());
+            //taskExecInfo = new TaskExecInfo(finishedTask.getTaskRestart().getTimeInMillis(), finishedTask.getTaskEnd().getTimeInMillis(), finishedTask.getTimeSpend());
         }
         return taskExecInfo;
     }

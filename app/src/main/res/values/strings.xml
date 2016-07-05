@@ -52,12 +52,13 @@
     <string name="task_exec_frequency">Task execution frequency</string>
     <string name="image_crop_activity_title">Choose a miniature</string>
     <string name="image_source_picker_dialog_title">Select image source</string>
-    <string name="dialog_delete_all_tasks_forever">Delete statistics of deleted tasks?</string>
+    <string name="dialog_delete_all_tasks_forever">Delete information about removed tasks?</string>
     <string name="menu_refresh">Refresh statistics</string>
     <string name="menu_remove_all_forever">Remove all forever</string>
+    <string name="duration_must_be_lower_than_frequency">Task max duration must be lower than its repeat period</string>
     <string-array name="task_frequency_variants">
         <item>Execute once</item>
-        <item>Repeat every hour</item>
+        <item>Repeat every 10 seconds (testing)</item>
         <item>Repeat every day</item>
         <item>Repeat every week</item>
         <item>Repeat every month</item>

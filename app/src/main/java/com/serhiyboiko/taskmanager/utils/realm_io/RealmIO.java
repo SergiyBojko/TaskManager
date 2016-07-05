@@ -24,7 +24,6 @@ public class RealmIO {
                 .Builder(context)
                 .schemaVersion(SCHEMA_VERSION)
                 .migration(new TaskMigration())
-                .deleteRealmIfMigrationNeeded()
                 .build();
         Realm.setDefaultConfiguration(realmConfig);
         mRealm = Realm.getDefaultInstance();

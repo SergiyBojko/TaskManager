@@ -139,7 +139,7 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
     private void setAvatar(ViewHolder holder, Task item) {
         final String avatarLocation = item.getAvatarLocation();
         final ViewHolder fHolder = holder;
-        if (!avatarLocation.equals("")){
+        if ((avatarLocation != null) && (!avatarLocation.equals(""))){
             holder.taskAvatar.setVisibility(View.VISIBLE);
             holder.taskAvatar.setImageBitmap(null);
             new Thread(new Runnable() {
@@ -227,7 +227,7 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                 date.append(String.format(END_DATE, item.getTaskEnd().get(GregorianCalendar.DAY_OF_MONTH),
                         item.getTaskEnd().get(GregorianCalendar.MONTH), item.getTaskEnd().get(GregorianCalendar.YEAR),
                         item.getTaskEnd().get(GregorianCalendar.HOUR_OF_DAY), item.getTaskEnd().get(GregorianCalendar.MINUTE)));
-                long elapsedMills = item.getTimeSpent();
+                long elapsedMills = item.getTimeSpend();
                 int elapsedHours = (int) TimeUnit.MILLISECONDS.toHours(elapsedMills);
                 int elapsedMinutes = (int)(TimeUnit.MILLISECONDS.toMinutes(elapsedMills) -
                         TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(elapsedMills)));
@@ -343,7 +343,7 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                             TaskExecInfo taskExecInfo;
                             taskExecInfo = TaskExecInfo.createTaskExecInfo(mRealmIO, item);
                             mRealmIO.getRealm().commitTransaction();
-                            long elapsedTimeInMills = item.getTimeSpent();
+                            long elapsedTimeInMills = item.getTimeSpend();
                             int hours = (int) TimeUnit.MILLISECONDS.toHours(elapsedTimeInMills);
                             int minutes = (int) (TimeUnit.MILLISECONDS.toMinutes(elapsedTimeInMills) -
                                     TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(elapsedTimeInMills)));
