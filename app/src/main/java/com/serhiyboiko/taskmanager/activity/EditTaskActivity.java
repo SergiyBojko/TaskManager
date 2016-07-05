@@ -99,7 +99,7 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                     avatarPath = "";
                 }
 
-                if (!avatarPath.equals("")){
+                if (!avatarPath.isEmpty()){
                     Bitmap avatar = BitmapFactory.decodeFile(avatarPath);
                     mTaskAvatar.setImageBitmap(avatar);
                 }

@@ -40,7 +40,7 @@ public class FileIO {
     }
 
     public static void removeFile (String path){
-        if(path != null && !path.equals("")){
+        if(path != null && !path.isEmpty()){
             File file = new File(path);
             file.delete();
         }

@@ -1,5 +1,6 @@
 package com.serhiyboiko.taskmanager.activity;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -8,12 +9,14 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ExpandableListView;
+import android.widget.ImageView;
 import android.widget.TabHost;
 
 import com.serhiyboiko.taskmanager.R;
@@ -61,8 +64,10 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     private int[] mBackgroundColors;
     private boolean mBackPressed;
     private Handler mHandler;
-    private Runnable mRunnable;
+    private Runnable mCancelExit;
+    private Runnable mRemoveRefreshActionView;
     private Menu mMenu;
+    private MenuItem mRefreshStatisticsItem;
 
     private static final int CREATE_NEW_TASK_REQUEST = 1;
     private static final int EDIT_TASK_REQUEST = 2;
@@ -165,7 +170,10 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     protected void onDestroy() {
         super.onDestroy();
         if (mHandler != null) {
-            mHandler.removeCallbacks(mRunnable);
+            mHandler.removeCallbacks(mCancelExit);
+            if(mRemoveRefreshActionView != null){
+                mHandler.removeCallbacks(mRemoveRefreshActionView);
+            }
         }
         mRealmIO.getRealm().removeAllChangeListeners();
         mRealmIO.close();
@@ -311,6 +319,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     public boolean onCreateOptionsMenu(Menu menu) {
         mMenu = menu;
         getMenuInflater().inflate(R.menu.lask_list_menu, menu);
+        mRefreshStatisticsItem = mMenu.findItem(R.id.menu_refresh);
         int sortingId = mSharedPrefsDeserializer.getListSorting();
         switch (sortingId) {
             case R.id.menu_sort_az:
@@ -334,6 +343,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
                 startActivityForResult(intent, CREATE_NEW_TASK_REQUEST);
                 return true;
             case R.id.menu_refresh:
+                animateRefresh();
                 calculateStatistics();
                 return true;
 
@@ -523,18 +533,21 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
 
     @Override
     public void onBackPressed() {
-        mHandler = new Handler();
-        mRunnable = new Runnable() {
-            @Override
-            public void run() {
-                mBackPressed = false;
-            }
-        };
+        if (mHandler == null) {
+            mHandler = new Handler();
+        }
+
         if (mBackPressed) {
             super.onBackPressed();
         } else {
+            mCancelExit = new Runnable() {
+                @Override
+                public void run() {
+                    mBackPressed = false;
+                }
+            };
             mBackPressed = true;
-            mHandler.postDelayed(mRunnable, 2000);
+            mHandler.postDelayed(mCancelExit, 2000);
             Snackbar.make(findViewById(R.id.task_list_activity_container),
                     getString(R.string.press_back_again_to_exit), Snackbar.LENGTH_SHORT).show();
         }
@@ -606,6 +619,32 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     private void hideStatisticsOptions() {
         mMenu.getItem(1).setVisible(false);
         mMenu.getItem(5).setVisible(false);
+    }
+
+    public void animateRefresh() {
+        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        ImageView iv = (ImageView) inflater.inflate(R.layout.refresh_statistics_action_view, null);
+
+        mRefreshStatisticsItem.setActionView(iv);
+
+        Animation rotation = AnimationUtils.loadAnimation(this, R.anim.refresh_icon_spinning);
+        iv.startAnimation(rotation);
+
+
+        if(mHandler == null){
+            mHandler = new Handler();
+        }
+
+        if (mRemoveRefreshActionView == null) {
+            mRemoveRefreshActionView = new Runnable() {
+                @Override
+                public void run() {
+                    mRefreshStatisticsItem.setActionView(null);
+                }
+            };
+        }
+
+        mHandler.postDelayed(mRemoveRefreshActionView, 1500);
     }
 }
 

@@ -1,17 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<set xmlns:android="http://schemas.android.com/apk/res/android">
-    <rotate
+<rotate xmlns:android="http://schemas.android.com/apk/res/android"
         android:fromDegrees="0"
-        android:toDegrees="120"
-        android:duration="200"/>
-    <rotate
-        android:startOffset = "200"
-        android:fromDegrees="120"
-        android:toDegrees="240"
-        android:duration="200"/>
-    <rotate
-        android:startOffset = "400"
-        android:fromDegrees="240"
-        android:toDegrees="360"
-        android:duration="200"/>
-</set>
+        android:toDegrees="720"
+        android:duration="1500"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:interpolator="@android:anim/anticipate_overshoot_interpolator"/>
