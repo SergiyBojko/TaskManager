@@ -100,9 +100,23 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
         setContentView(R.layout.task_list_activity);
         bindActivity();
         getSupportActionBar().setTitle(R.string.task_list_activity_title);
-
         initTabHost();
 
+        mHandler = new Handler();
+
+        mRemoveRefreshActionView = new Runnable() {
+            @Override
+            public void run() {
+                mRefreshStatisticsItem.setActionView(null);
+            }
+        };
+
+        mCancelExit = new Runnable() {
+            @Override
+            public void run() {
+                mBackPressed = false;
+            }
+        };
 
         mSharedPrefsDeserializer = new SharedPrefsDeserializer(this);
         mSharedPrefsSerializer = new SharedPrefsSerializer(this);
@@ -169,12 +183,8 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mHandler != null) {
-            mHandler.removeCallbacks(mCancelExit);
-            if(mRemoveRefreshActionView != null){
-                mHandler.removeCallbacks(mRemoveRefreshActionView);
-            }
-        }
+        mHandler.removeCallbacks(mCancelExit);
+        mHandler.removeCallbacks(mRemoveRefreshActionView);
         mRealmIO.getRealm().removeAllChangeListeners();
         mRealmIO.close();
     }
@@ -327,7 +337,6 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
             case R.id.menu_sort_new_old:
             case R.id.menu_sort_old_new:
                 menu.findItem(sortingId).setChecked(true);
-                return true;
         }
         initTaskListTab();
         return true;
@@ -422,7 +431,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
             for (int i = 0; i < lineAmount; i++) {
                 line += commentary[i];
             }
-            Task task = new Task(this, line, title, defaultTaskDuration, 0, "");
+            Task task = new Task(this, line, title, defaultTaskDuration, 0, null);
             mRealmIO.putTask(task);
             mTaskListAdapter.onBindViewHolder(viewHolder, task);
             View newItem = viewHolder.itemView;
@@ -533,19 +542,10 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
 
     @Override
     public void onBackPressed() {
-        if (mHandler == null) {
-            mHandler = new Handler();
-        }
 
         if (mBackPressed) {
             super.onBackPressed();
         } else {
-            mCancelExit = new Runnable() {
-                @Override
-                public void run() {
-                    mBackPressed = false;
-                }
-            };
             mBackPressed = true;
             mHandler.postDelayed(mCancelExit, 2000);
             Snackbar.make(findViewById(R.id.task_list_activity_container),
@@ -629,20 +629,6 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
 
         Animation rotation = AnimationUtils.loadAnimation(this, R.anim.refresh_icon_spinning);
         iv.startAnimation(rotation);
-
-
-        if(mHandler == null){
-            mHandler = new Handler();
-        }
-
-        if (mRemoveRefreshActionView == null) {
-            mRemoveRefreshActionView = new Runnable() {
-                @Override
-                public void run() {
-                    mRefreshStatisticsItem.setActionView(null);
-                }
-            };
-        }
 
         mHandler.postDelayed(mRemoveRefreshActionView, 1500);
     }

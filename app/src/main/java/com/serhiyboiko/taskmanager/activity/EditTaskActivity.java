@@ -95,11 +95,8 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                 mTaskFrequencySpinner.setSelection(intent.getIntExtra(TaskListActivity.TASK_FREQUENCY_EXTRA, 0));
                 String avatarPath = intent.getStringExtra(TaskListActivity.AVATAR_PATH_EXTRA);
 
-                if(avatarPath == null){
-                    avatarPath = "";
-                }
 
-                if (!avatarPath.isEmpty()){
+                if (avatarPath != null && !avatarPath.isEmpty()){
                     Bitmap avatar = BitmapFactory.decodeFile(avatarPath);
                     mTaskAvatar.setImageBitmap(avatar);
                 }
