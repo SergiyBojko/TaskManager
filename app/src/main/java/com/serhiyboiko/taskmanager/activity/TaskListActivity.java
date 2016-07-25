@@ -1,14 +1,18 @@
 package com.serhiyboiko.taskmanager.activity;
 
+import android.app.backup.BackupManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,10 +29,12 @@ import com.serhiyboiko.taskmanager.adapter.TaskListAdapter;
 import com.serhiyboiko.taskmanager.dialog.ConfirmationDialog;
 import com.serhiyboiko.taskmanager.model.Task;
 import com.serhiyboiko.taskmanager.model.TaskExecInfo;
-import com.serhiyboiko.taskmanager.utils.alarm_manager.TaskManager;
+import com.serhiyboiko.taskmanager.service.TaskManager;
 import com.serhiyboiko.taskmanager.utils.realm_io.RealmIO;
+import com.serhiyboiko.taskmanager.utils.realm_io.RealmLoader;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsDeserializer;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsSerializer;
+import com.serhiyboiko.taskmanager.utils.tutorial.Tutorial;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -44,7 +50,9 @@ import io.realm.RealmList;
 import io.realm.RealmResults;
 import io.realm.Sort;
 
-public class TaskListActivity extends AppCompatActivity implements ConfirmationDialog.DialogListener, TabHost.OnTabChangeListener {
+public class TaskListActivity
+        extends AppCompatActivity
+        implements ConfirmationDialog.DialogListener, TabHost.OnTabChangeListener, LoaderManager.LoaderCallbacks<RealmResults<Task>> {
 
 
     private static final String TAG = "TaskListActivity";
@@ -59,7 +67,6 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     private TaskListAdapter mTaskListAdapter;
     private StatisticsAdapter mStatisticsAdapter;
     private SharedPrefsSerializer mSharedPrefsSerializer;
-    private TaskManager mTaskManager;
     private RealmIO mRealmIO;
     private int[] mBackgroundColors;
     private boolean mBackPressed;
@@ -68,10 +75,14 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     private Runnable mRemoveRefreshActionView;
     private Menu mMenu;
     private MenuItem mRefreshStatisticsItem;
+    private View mCurrentTabView;
+    private int mCurrentTabId;
 
     private static final int CREATE_NEW_TASK_REQUEST = 1;
     private static final int EDIT_TASK_REQUEST = 2;
     private static final int SETTINGS_REQUEST = 3;
+
+    private final static int REALM_LOADER = 1;
 
     public final static String ITEM_POSITION_EXTRA = "item_position";
     public final static String TASK_ID_EXTRA = "task_id";
@@ -81,6 +92,10 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     public final static String TASK_FREQUENCY_EXTRA = "task_frequency";
     public final static String AVATAR_PATH_EXTRA = "avatar_path";
     public final static String REQUEST_CODE_EXTRA = "request_code";
+    public final static String AVATAR_EDIT_TIME_EXTRA = "avatar_edit_tome";
+    public static final String IS_ASSIGNED_TO_LOCATION_EXTRA = "is_assigned_to_location";
+    public static final String LATITUDE_EXTRA = "latitude";
+    public static final String LONGITUDE_EXTRA = "longitude";
 
     public static final String TASKS_DURATION_KEY = "tasks_duration";
     public static final String TASKS_ID_LIST_KEY = "tasks_id_list";
@@ -89,6 +104,10 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
     public static final String TASK_TOTAL_DURATION = "total_duration";
     public static final String DATA_LIST_KEY = "task_data_list";
     public static final String TASKS_INFO_LIST = "tasks_info_list";
+
+    public static final Object sDataLock = new Object();
+
+
 
 
     private SharedPrefsDeserializer mSharedPrefsDeserializer;
@@ -100,6 +119,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
         setContentView(R.layout.task_list_activity);
         bindActivity();
         getSupportActionBar().setTitle(R.string.task_list_activity_title);
+
         initTabHost();
 
         mHandler = new Handler();
@@ -121,39 +141,11 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
         mSharedPrefsDeserializer = new SharedPrefsDeserializer(this);
         mSharedPrefsSerializer = new SharedPrefsSerializer(this);
 
-        mRealmIO = new RealmIO(this);
-        mRealmIO.getRealm().addChangeListener(new RealmChangeListener<Realm>() {
-            @Override
-            public void onChange(Realm element) {
-                mTaskListAdapter.notifyDataSetChanged();
-            }
-        });
-
-        mTaskManager = new TaskManager(this);
+        getSupportLoaderManager().initLoader(REALM_LOADER, null, this);
 
         mBackgroundColors = mSharedPrefsDeserializer.getTaskBackgroundColors();
 
-        mTaskListRealmResults = mRealmIO.getAllTasks();
-        mTaskListAdapter = new TaskListAdapter(this, mTaskListRealmResults, mBackgroundColors, mTaskManager, mRealmIO);
-        int currentSortingId = mSharedPrefsDeserializer.getListSorting();
-        switch (currentSortingId) {
-            case R.id.menu_sort_az:
-                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.ASCENDING, "mTaskStart", Sort.ASCENDING);
-                break;
-            case R.id.menu_sort_za:
-                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.DESCENDING, "mTaskStart", Sort.ASCENDING);
-                break;
-            case R.id.menu_sort_new_old:
-                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.DESCENDING, "mTitle", Sort.ASCENDING);
-                break;
-            case R.id.menu_sort_old_new:
-                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.ASCENDING, "mTitle", Sort.ASCENDING);
-                break;
-        }
-
-        mTaskListView.setLayoutManager(new LinearLayoutManager(this));
-        mTaskListView.setAdapter(mTaskListAdapter);
-        mTaskListAdapter.setTaskRealmResults(mTaskListRealmResults);
+        mRealmIO = new RealmIO(this);
 
         mStatisticsAdapter = new StatisticsAdapter(mMonthsList, mMonthsMap, mRealmIO, this);
         mStatisticsExpandableList.setAdapter(mStatisticsAdapter);
@@ -168,16 +160,31 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
                 startActivityForResult(intent, CREATE_NEW_TASK_REQUEST);
             }
         });
+
+        if(!TaskManager.isRunning()){
+            startService(new Intent(this, TaskManager.class));
+        }
+
     }
 
     @Override
     protected void onStart() {
+        Log.i(TAG, "onStart");
         super.onStart();
+    }
+
+    @Override
+    protected void onResume() {
+        Log.i(TAG, "onResume");
+        super.onResume();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        BackupManager backupManager = new BackupManager(this);
+        backupManager.dataChanged();
+        Log.i(TAG, "onStop");
     }
 
     @Override
@@ -187,6 +194,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
         mHandler.removeCallbacks(mRemoveRefreshActionView);
         mRealmIO.getRealm().removeAllChangeListeners();
         mRealmIO.close();
+        Log.i(TAG, "onDestroy");
     }
 
     //bind references to widgets
@@ -217,7 +225,11 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
 
         mTabHost.setCurrentTabByTag(taskListTabTitle);
         mTabHost.setOnTabChangedListener(this);
+
+        mCurrentTabView = mTabHost.getCurrentView();
+        mCurrentTabId = mTabHost.getCurrentTab();
     }
+
 
     private void calculateStatistics() {
         RealmResults<Task> tasksWithStatistics = mRealmIO.getRealm()
@@ -327,6 +339,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        Log.i(TAG, "onCreateOptionsMenu");
         mMenu = menu;
         getMenuInflater().inflate(R.menu.lask_list_menu, menu);
         mRefreshStatisticsItem = mMenu.findItem(R.id.menu_refresh);
@@ -339,8 +352,17 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
                 menu.findItem(sortingId).setChecked(true);
         }
         initTaskListTab();
+        Tutorial.taskListActivityTutorial(this, mMenu);
         return true;
     }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        Log.i(TAG, "onPrepareOptionsMenu");
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -431,7 +453,7 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
             for (int i = 0; i < lineAmount; i++) {
                 line += commentary[i];
             }
-            Task task = new Task(this, line, title, defaultTaskDuration, 0, null);
+            Task task = new Task(this, line, title, defaultTaskDuration, 0, null, 0, 0, 0, false);
             mRealmIO.putTask(task);
             mTaskListAdapter.onBindViewHolder(viewHolder, task);
             View newItem = viewHolder.itemView;
@@ -450,6 +472,10 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
         final int maxDuration;
         final int taskFrequency;
         final String avatarPath;
+        final long avatarEditTime;
+        final double latitude;
+        final double longitude;
+        final boolean isAssignedToLocation;
 
         int position;
         //check result code
@@ -466,9 +492,14 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
                     maxDuration = data.getIntExtra(MAX_DURATION_EXTRA, 0);
                     taskFrequency = data.getIntExtra(TASK_FREQUENCY_EXTRA, 0);
                     avatarPath = data.getStringExtra(AVATAR_PATH_EXTRA);
+                    avatarEditTime = data.getLongExtra(AVATAR_EDIT_TIME_EXTRA, 0);
+                    latitude = data.getDoubleExtra(LATITUDE_EXTRA, 0);
+                    longitude = data.getDoubleExtra(LONGITUDE_EXTRA, 0);
+                    isAssignedToLocation = data.getBooleanExtra(IS_ASSIGNED_TO_LOCATION_EXTRA, false);
 
                     //add task to list
-                    Task task = new Task(this, commentary, title, maxDuration, taskFrequency, avatarPath);
+                    Task task = new Task(this, commentary, title, maxDuration, taskFrequency,
+                            avatarPath, avatarEditTime, latitude, longitude, isAssignedToLocation);
                     mRealmIO.putTask(task);
                     break;
                 case EDIT_TASK_REQUEST:
@@ -483,53 +514,36 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
                     taskFrequency = data.getIntExtra(TASK_FREQUENCY_EXTRA, 0);
                     position = data.getIntExtra(ITEM_POSITION_EXTRA, 0);
                     avatarPath = data.getStringExtra(AVATAR_PATH_EXTRA);
+                    avatarEditTime = data.getLongExtra(AVATAR_EDIT_TIME_EXTRA, 0);
+                    latitude = data.getDoubleExtra(LATITUDE_EXTRA, 0);
+                    longitude = data.getDoubleExtra(LONGITUDE_EXTRA, 0);
+                    isAssignedToLocation = data.getBooleanExtra(IS_ASSIGNED_TO_LOCATION_EXTRA, false);
 
                     selectedItem = mTaskListRealmResults.get(position);
-                    int currentFrequency = selectedItem.getPeriod();
-                    int currentMaxDuration = selectedItem.getTaskMaxDuration();
-                    String currentTitle = selectedItem.getTitle();
-                    String currentCommentary = selectedItem.getCommentary();
-                    String currentAvatarPath = selectedItem.getAvatarLocation();
 
                     //get list item and change it fields
-                    if (currentFrequency != taskFrequency || currentMaxDuration != maxDuration) {
-
-                        mRealmIO.getRealm().beginTransaction();
-                        selectedItem.setTaskMaxDuration(maxDuration);
-                        selectedItem.setPeriod(taskFrequency);
-                        mRealmIO.getRealm().commitTransaction();
-
-                        mTaskManager.registerTask(selectedItem);
-                        if (taskFrequency == 0) {
-                            mTaskManager.unregisterTaskAutoRepeat(selectedItem);
-                        }
-                        if (maxDuration == 0) {
-                            mTaskManager.unregisterTaskAutoFinish(selectedItem);
-                        }
-                    }
-
                     mRealmIO.getRealm().beginTransaction();
-                    if (!currentTitle.equals(title)) {
-                        selectedItem.setTitle(title);
-                    }
-
-                    if (!currentCommentary.equals(commentary)) {
-                        selectedItem.setCommentary(commentary);
-                    }
-
-                    if (currentAvatarPath == null || !currentAvatarPath.equals(avatarPath)) {
-                        selectedItem.setAvatarLocation(avatarPath);
-                    }
+                    selectedItem.setPeriod(taskFrequency);
+                    selectedItem.setTaskMaxDuration(maxDuration);
+                    selectedItem.setTitle(title);
+                    selectedItem.setCommentary(commentary);
+                    selectedItem.setAvatarLocation(avatarPath);
+                    selectedItem.setLastAvatarEditTime(avatarEditTime);
+                    selectedItem.setLatitude(latitude);
+                    selectedItem.setLongitude(longitude);
+                    selectedItem.setAssignedToLocation(isAssignedToLocation);
                     mRealmIO.getRealm().commitTransaction();
 
                     break;
                 case SETTINGS_REQUEST:
                     mBackgroundColors = mSharedPrefsDeserializer.getTaskBackgroundColors();
+
                     mTaskListAdapter.setBackgroundColors(mBackgroundColors);
                     mTaskListAdapter.notifyDataSetChanged();
                     break;
             }
         }
+        Tutorial.taskListActivityTutorial(this, mMenu);
     }
 
 
@@ -569,6 +583,10 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
 
     @Override
     public void onTabChanged(String s) {
+        int newTabId = mTabHost.getCurrentTab();
+        View newTabView = mTabHost.getCurrentView();
+
+
         switch (s) {
             case "Task list":
                 initTaskListTab();
@@ -576,9 +594,24 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
             case "Statistics":
                 initStatisticsTab();
                 break;
-
-
         }
+
+        if (newTabId > mCurrentTabId){
+            Animation inFromRight = AnimationUtils.loadAnimation(this, R.anim.tab_in_from_right);
+            Animation outToLeft = AnimationUtils.loadAnimation(this, R.anim.tab_out_to_left);
+
+            newTabView.setAnimation(inFromRight);
+            mCurrentTabView.setAnimation(outToLeft);
+        } else {
+            Animation inFromLeft = AnimationUtils.loadAnimation(this, R.anim.tab_in_from_left);
+            Animation outToRight = AnimationUtils.loadAnimation(this, R.anim.tab_out_to_right);
+
+            newTabView.setAnimation(inFromLeft);
+            mCurrentTabView.setAnimation(outToRight);
+        }
+
+        mCurrentTabId = mTabHost.getCurrentTab();
+        mCurrentTabView = mTabHost.getCurrentView();
     }
 
     private void initTaskListTab(){
@@ -631,6 +664,57 @@ public class TaskListActivity extends AppCompatActivity implements ConfirmationD
         iv.startAnimation(rotation);
 
         mHandler.postDelayed(mRemoveRefreshActionView, 1500);
+    }
+
+    @Override
+    public Loader<RealmResults<Task>> onCreateLoader(int id, Bundle args) {
+        switch (id){
+            case REALM_LOADER:
+                return new RealmLoader(this);
+
+        }
+        return null;
+    }
+
+    @Override
+    public void onLoadFinished(Loader<RealmResults<Task>> loader, RealmResults<Task> data) {
+        mTaskListRealmResults = data;
+
+        int currentSortingId = mSharedPrefsDeserializer.getListSorting();
+        switch (currentSortingId) {
+            case R.id.menu_sort_az:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.ASCENDING, "mTaskStart", Sort.ASCENDING);
+                break;
+            case R.id.menu_sort_za:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTitle", Sort.DESCENDING, "mTaskStart", Sort.ASCENDING);
+                break;
+            case R.id.menu_sort_new_old:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.DESCENDING, "mTitle", Sort.ASCENDING);
+                break;
+            case R.id.menu_sort_old_new:
+                mTaskListRealmResults = mTaskListRealmResults.sort("mTaskStart", Sort.ASCENDING, "mTitle", Sort.ASCENDING);
+                break;
+        }
+
+        if (mTaskListAdapter == null){
+            mTaskListAdapter = new TaskListAdapter(this, mTaskListRealmResults, mBackgroundColors, mRealmIO);
+            mTaskListView.setLayoutManager(new LinearLayoutManager(this));
+            mTaskListView.setAdapter(mTaskListAdapter);
+        } else {
+            mTaskListAdapter.setTaskRealmResults(mTaskListRealmResults);
+        }
+
+        mTaskListRealmResults.addChangeListener(new RealmChangeListener<RealmResults<Task>>() {
+            @Override
+            public void onChange(RealmResults<Task> element) {
+                mTaskListAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    @Override
+    public void onLoaderReset(Loader<RealmResults<Task>> loader) {
+
     }
 }
 

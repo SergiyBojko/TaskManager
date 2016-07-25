@@ -3,7 +3,6 @@ package com.serhiyboiko.taskmanager.adapter;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.support.design.widget.Snackbar;
 import android.support.v7.widget.CardView;
@@ -16,6 +15,8 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.signature.StringSignature;
 import com.daimajia.swipe.SwipeLayout;
 import com.daimajia.swipe.adapters.RecyclerSwipeAdapter;
 import com.serhiyboiko.taskmanager.R;
@@ -24,7 +25,6 @@ import com.serhiyboiko.taskmanager.activity.TaskListActivity;
 import com.serhiyboiko.taskmanager.model.PauseInfo;
 import com.serhiyboiko.taskmanager.model.Task;
 import com.serhiyboiko.taskmanager.model.TaskExecInfo;
-import com.serhiyboiko.taskmanager.utils.alarm_manager.TaskManager;
 import com.serhiyboiko.taskmanager.utils.file_io.FileIO;
 import com.serhiyboiko.taskmanager.utils.realm_io.RealmIO;
 
@@ -47,7 +47,6 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
     private RealmResults<Task> mTaskRealmResults;
     private int[] mBackgroundColors;
     private Context mContext;
-    private TaskManager mTaskManager;
     private RealmIO mRealmIO;
 
     private static final int EDIT_TASK_REQUEST = 2;
@@ -57,12 +56,10 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
     private final static int ENDED_TASK = 2;
 
     public TaskListAdapter(Context context, RealmResults<Task> taskList,
-                           int[] backgroundColors,
-                           TaskManager taskManager, RealmIO realmIO){
+                           int[] backgroundColors, RealmIO realmIO){
         mTaskRealmResults = taskList;
         mBackgroundColors = backgroundColors;
         mContext = context;
-        mTaskManager = taskManager;
         mRealmIO = realmIO;
 
     }
@@ -96,6 +93,15 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
         setSwipeMenuButtonsVisibility(holder, item);
         setAvatar(holder, item);
         setPeriodicTaskIcon(holder, item, currentBackgroundColor);
+        setLocationIndicator(holder, item);
+    }
+
+    private void setLocationIndicator(ViewHolder holder, Task item) {
+        if (item.isAssignedToLocation()){
+            holder.locationIndicator.setVisibility(View.VISIBLE);
+        } else {
+            holder.locationIndicator.setVisibility(View.GONE);
+        }
     }
 
     private void setPeriodicTaskIcon(ViewHolder holder, Task item, int currentBackgroundColor) {
@@ -140,22 +146,18 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
         final String avatarLocation = item.getAvatarLocation();
         final ViewHolder fHolder = holder;
         if ((avatarLocation != null) && (!avatarLocation.equals(""))){
-            holder.taskAvatar.setVisibility(View.VISIBLE);
-            holder.taskAvatar.setImageBitmap(null);
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap avatar = FileIO.loadImage(avatarLocation);
-                    fHolder.taskAvatar.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            fHolder.taskAvatar.setImageBitmap(avatar);
-                        }
-                    });
-                }
-            }, "avatar loader").start();
+            Glide.with(mContext)
+                    .load(avatarLocation)
+                    .signature(new StringSignature(Long.toString(item.getLastAvatarEditTime())))
+                    .placeholder(R.mipmap.avatar_placeholder)
+                    .crossFade()
+                    .into(holder.taskAvatar);
         } else {
-            holder.taskAvatar.setVisibility(View.GONE);
+            Glide.with(mContext)
+                    .load(R.mipmap.default_avatar)
+                    .placeholder(R.mipmap.avatar_placeholder)
+                    .crossFade()
+                    .into(holder.taskAvatar);
         }
     }
 
@@ -288,6 +290,7 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
         ImageButton pauseContinueTask;
         ImageView taskAvatar;
         ImageView periodicTaskIcon;
+        ImageView locationIndicator;
 
 
         //swipe menu buttons
@@ -313,6 +316,7 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
             cancelTaskExecution = (ImageButton)v.findViewById(R.id.cancel_task_execution_image_button);
             oneStepBackInTaskExecution = (ImageButton)v.findViewById(R.id.one_step_back_image_button);
             taskAvatar = (ImageView)v.findViewById(R.id.list_item_avatar);
+            locationIndicator = (ImageView)v.findViewById(R.id.location_indicator);
 
             startStopTask.setOnClickListener(this);
             pauseContinueTask.setOnClickListener(this);
@@ -334,14 +338,11 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                         mRealmIO.getRealm().beginTransaction();
                         item.setTaskStart(new GregorianCalendar());
                         mRealmIO.getRealm().commitTransaction();
-                        mTaskManager.registerTask(item);
                     } else {
                         if (item.getTaskEnd() == null) {
-                            mTaskManager.unregisterTaskAutoFinish(item);
                             mRealmIO.getRealm().beginTransaction();
                             item.setTaskEnd(new GregorianCalendar());
-                            TaskExecInfo taskExecInfo;
-                            taskExecInfo = TaskExecInfo.createTaskExecInfo(mRealmIO, item);
+                            TaskExecInfo.createTaskExecInfo(mRealmIO, item);
                             mRealmIO.getRealm().commitTransaction();
                             long elapsedTimeInMills = item.getTimeSpend();
                             int hours = (int) TimeUnit.MILLISECONDS.toHours(elapsedTimeInMills);
@@ -370,7 +371,6 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                         item.setPaused(true);
                         item.getPauseInfoList().add(managedPause);
                         mRealmIO.getRealm().commitTransaction();
-                        mTaskManager.unregisterTaskAutoFinish(item);
                     } else {
                         mRealmIO.getRealm().beginTransaction();
                         item.setPaused(false);
@@ -379,14 +379,10 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                         PauseInfo pauseToFinish = item.getPauseInfoList().get(pausesAmount - 1);
                         pauseToFinish.finish();
                         mRealmIO.getRealm().commitTransaction();
-                        mTaskManager.registerTask(item);
-
                     }
                     break;
                 case R.id.delete_task_image_button:
                     swipeLayout.close(false);
-                    mTaskManager.unregisterTaskAutoFinish(item);
-                    mTaskManager.unregisterTaskAutoRepeat(item);
                     FileIO.removeFile(item.getAvatarLocation());
                     mRealmIO.hideTask(item);
                     notifyDataSetChanged();
@@ -402,6 +398,10 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                     intent.putExtra(TaskListActivity.MAX_DURATION_EXTRA, taskToEdit.getTaskMaxDuration());
                     intent.putExtra(TaskListActivity.TASK_FREQUENCY_EXTRA, taskToEdit.getPeriod());
                     intent.putExtra(TaskListActivity.AVATAR_PATH_EXTRA, taskToEdit.getAvatarLocation());
+                    intent.putExtra(TaskListActivity.AVATAR_EDIT_TIME_EXTRA, taskToEdit.getLastAvatarEditTime());
+                    intent.putExtra(TaskListActivity.IS_ASSIGNED_TO_LOCATION_EXTRA, taskToEdit.isAssignedToLocation());
+                    intent.putExtra(TaskListActivity.LATITUDE_EXTRA, taskToEdit.getLatitude());
+                    intent.putExtra(TaskListActivity.LONGITUDE_EXTRA, taskToEdit.getLongitude());
                     intent.putExtra(REQUEST_CODE_EXTRA, EDIT_TASK_REQUEST);
                     ((Activity)mContext).startActivityForResult(intent, EDIT_TASK_REQUEST);
                     break;
@@ -412,10 +412,7 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                         item.setTaskEnd(null);
                         item.getPauseInfoList().deleteAllFromRealm();
                         mRealmIO.getRealm().commitTransaction();
-                        mTaskManager.registerTask(item);
                     } else {
-                        mTaskManager.unregisterTaskAutoFinish(item);
-                        mTaskManager.unregisterTaskAutoRepeat(item);
                         mRealmIO.getRealm().beginTransaction();
                         item.setTaskStart(null);
                         item.setTaskRestart(null);
@@ -426,8 +423,6 @@ public class TaskListAdapter extends RecyclerSwipeAdapter<TaskListAdapter.ViewHo
                     swipeLayout.close(true);
                     break;
                 case R.id.cancel_task_execution_image_button:
-                    mTaskManager.unregisterTaskAutoFinish(item);
-                    mTaskManager.unregisterTaskAutoRepeat(item);
                     mRealmIO.getRealm().beginTransaction();
                     item.setTaskStart(null);
                     item.setTaskRestart(null);

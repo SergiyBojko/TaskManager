@@ -56,6 +56,20 @@
     <string name="menu_refresh">Refresh statistics</string>
     <string name="menu_remove_all_forever">Remove all forever</string>
     <string name="duration_must_be_lower_than_frequency">Task max duration must be lower than its repeat period</string>
+    <string name="task_location_select_activity_title">Select location of task execution</string>
+    <string name="task_finished_max_duration_exceeded_message">Max duration exceeded</string>
+    <string name="finished">finished</string>
+    <string name="task_finished_location_left_message">You left task location</string>
+    <string name="started">started</string>
+    <string name="task_started_location_entered_message">You entered task location</string>
+    <string name="new_task_button_tutorial_title">New task</string>
+    <string name="new_task_button_tutorial_text">Press this button to create your first task!</string>
+    <string name="sorting_tutorial_title">Sorting</string>
+    <string name="sorting_tutorial_text">You can select task sorting type by pressing this button</string>
+    <string name="settings_tutorial_title">Settings</string>
+    <string name="settings_tutorial_text">Here you can change task backgrounds and select default duration</string>
+    <string name="task_location_tutorial_title">Task location</string>
+    <string name="task_location_tutorial_text">You can specify location where task should be executed. It will be started automatically when you come close to it and finished when you leave.</string>
     <string-array name="task_frequency_variants">
         <item>Execute once</item>
         <item>Repeat every 10 seconds (testing)</item>

@@ -12,7 +12,7 @@ import io.realm.RealmResults;
 
 public class RealmIO {
 
-    private final static int SCHEMA_VERSION = 2;
+    public final static int SCHEMA_VERSION = 3;
 
     private final static String TASK_ID = "mId";
 
@@ -23,6 +23,7 @@ public class RealmIO {
         RealmConfiguration realmConfig = new RealmConfiguration
                 .Builder(context)
                 .schemaVersion(SCHEMA_VERSION)
+                .deleteRealmIfMigrationNeeded()
                 .migration(new TaskMigration())
                 .build();
         Realm.setDefaultConfiguration(realmConfig);
@@ -37,7 +38,6 @@ public class RealmIO {
         mRealm.beginTransaction();
         mRealm.copyToRealmOrUpdate(task);
         mRealm.commitTransaction();
-
     }
 
     public PauseInfo putPauseInfo (PauseInfo pauseInfo){
@@ -104,6 +104,33 @@ public class RealmIO {
         return tasks;
     }
 
+    public RealmResults<Task> getAllAutoFinishTasks(){
+        RealmResults<Task> tasks = mRealm.where(Task.class)
+                .equalTo("mIsHidden", false)
+                .equalTo("mIsPaused", false)
+                .notEqualTo("mTaskStart", 0)
+                .equalTo("mTaskEnd", 0)
+                .notEqualTo("mTaskMaxDuration", 0)
+                .findAll();
+        return tasks;
+    }
+
+    public RealmResults<Task> getAllAutoRestartTasks(){
+        RealmResults<Task> tasks = mRealm.where(Task.class)
+                .equalTo("mIsHidden", false)
+                .notEqualTo("mTaskStart", 0)
+                .notEqualTo("mPeriod", 0)
+                .findAll();
+        return tasks;
+    }
+
+    public RealmResults<Task> getAllTasksAssignedToLocation() {
+        return mRealm.where(Task.class)
+                .equalTo("mIsHidden", false)
+                .equalTo("mIsAssignedToLocation", true)
+                .findAll();
+    }
+
     public Task findTaskById (int id){
         Task task = mRealm.where(Task.class).equalTo(TASK_ID, id).findFirst();
         return task;
@@ -112,5 +139,4 @@ public class RealmIO {
     public void close(){
         mRealm.close();
     }
-
 }

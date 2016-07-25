@@ -42,24 +42,33 @@ public class Task extends RealmObject implements Parcelable{
     //tasks that are deleted from app become hidden to provide statistics information
     private boolean mIsHidden;
     private RealmList<TaskExecInfo> mTaskExecInfoList;
+    private long mLastAvatarEditTime;
+    private double mLatitude;
+    private double mLongitude;
+    private boolean mIsAssignedToLocation;
+
 
     public Task(){}
 
-    public Task(Context context, String commentary, String title, int taskMaxDuration, int period, String avatarLocation){
+    public Task(Context context, String commentary, String title, int taskMaxDuration, int period,
+                String avatarLocation, long lastAvatarEditTime, double latitude, double longitude, boolean isAssignedToLocation){
         mTitle = title;
         mCommentary = commentary;
         mTaskMaxDuration = taskMaxDuration;
         mPeriod = period;
         mAvatarLocation = avatarLocation;
+        mLastAvatarEditTime = lastAvatarEditTime;
+        mLatitude = latitude;
+        mLongitude = longitude;
+        mIsAssignedToLocation = isAssignedToLocation;
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         mId = sp.getInt(NEXT_TASK_ID, 0);
         int nextId = mId + 1;
         sp.edit().putInt(NEXT_TASK_ID, nextId).apply();
-
-        Log.i("created new task", "id = " + mId);
-        Log.i("created new task", "AvatarLocation = " + mAvatarLocation);
     }
+
+
 
     private Task(Parcel parcel) {
     }
@@ -253,8 +262,12 @@ public class Task extends RealmObject implements Parcelable{
         return mTaskExecInfoList;
     }
 
-    public void setTaskExecInfoList(RealmList<TaskExecInfo> taskExecInfoList) {
-        mTaskExecInfoList = taskExecInfoList;
+    public long getLastAvatarEditTime() {
+        return mLastAvatarEditTime;
+    }
+
+    public void setLastAvatarEditTime(long lastAvatarEditTime) {
+        mLastAvatarEditTime = lastAvatarEditTime;
     }
 
     public int getTotalPauseDuration() {
@@ -263,6 +276,30 @@ public class Task extends RealmObject implements Parcelable{
             totalPauseDuration += pauseInfo.getPauseDuration();
         }
         return totalPauseDuration;
+    }
+
+    public boolean isAssignedToLocation() {
+        return mIsAssignedToLocation;
+    }
+
+    public void setAssignedToLocation(boolean assignedToLocation) {
+        mIsAssignedToLocation = assignedToLocation;
+    }
+
+    public double getLongitude() {
+        return mLongitude;
+    }
+
+    public void setLongitude(double longitude) {
+        mLongitude = longitude;
+    }
+
+    public double getLatitude() {
+        return mLatitude;
+    }
+
+    public void setLatitude(double latitude) {
+        mLatitude = latitude;
     }
 
     @Override

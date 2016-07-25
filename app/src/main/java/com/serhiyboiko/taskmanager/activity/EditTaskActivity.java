@@ -11,7 +11,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
-import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.support.design.widget.TextInputEditText;
 import android.support.v7.app.AppCompatActivity;
@@ -24,11 +23,21 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.signature.StringSignature;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.serhiyboiko.taskmanager.R;
 import com.serhiyboiko.taskmanager.dialog.ImageSourcePickerDialog;
 import com.serhiyboiko.taskmanager.model.Task;
 import com.serhiyboiko.taskmanager.utils.file_io.FileIO;
 import com.serhiyboiko.taskmanager.utils.sharedprefs.SharedPrefsDeserializer;
+import com.serhiyboiko.taskmanager.utils.tutorial.Tutorial;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
@@ -41,27 +50,41 @@ import java.util.GregorianCalendar;
 import java.util.List;
 
 
-public class EditTaskActivity extends AppCompatActivity implements View.OnClickListener{
+public class EditTaskActivity extends AppCompatActivity implements View.OnClickListener, OnMapReadyCallback {
 
     private static final String TAG = "EditTaskActivity";
+    public static final String MAP_FRAGMENT_TAG = "map_fragment";
+    private static final String AVATAR_CHANGED_KEY = "avatar_changed";
+    private static final String AVATAR_KEY = "avatar";
     private int mTaskId;
     private TextInputEditText mTitleEditText;
     private TextInputEditText mCommentaryEditText;
     private TextInputEditText mMaxTaskDurationEditText;
     private ImageButton mTitleVoiceButton;
     private ImageButton mCommentaryVoiceButton;
+    private ImageButton mEditLocationButton;
+    private ImageButton mDeleteLocationButton;
     private AppCompatSpinner mTaskFrequencySpinner;
     private ImageView mTaskAvatar;
     private int buttonId;
     private int mItemPosition;
     private int mRequestCode;
+    private String mAvatarPath;
+    private long mAvatarEditTime;
+    private boolean mAvatarChanged;
+    private double mLatitude;
+    private double mLongitude;
+    private boolean mIsAssignedToLocation;
+    private GoogleMap mMap;
+    private ImageView mMapPlaceholder;
+
 
     private static final int CREATE_NEW_TASK_REQUEST = 1;
     private static final int EDIT_TASK_REQUEST = 2;
     private final static int VOICE_RECOGNITION_REQUEST = 3;
     private final static int PICK_AVATAR_FROM_GALLERY_REQUEST = 4;
     private static final int PICK_AVATAR_FOM_CAMERA_REQUEST = 5;
-
+    private static final int SELECT_TASK_LOCATION_REQUEST = 6;
 
 
     @Override
@@ -93,12 +116,18 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                 mCommentaryEditText.setText(intent.getStringExtra(TaskListActivity.COMMENTARY_EXTRA));
                 mMaxTaskDurationEditText.setText(String.valueOf(intent.getIntExtra(TaskListActivity.MAX_DURATION_EXTRA, 0)));
                 mTaskFrequencySpinner.setSelection(intent.getIntExtra(TaskListActivity.TASK_FREQUENCY_EXTRA, 0));
-                String avatarPath = intent.getStringExtra(TaskListActivity.AVATAR_PATH_EXTRA);
+                mAvatarPath = intent.getStringExtra(TaskListActivity.AVATAR_PATH_EXTRA);
+                mAvatarEditTime = intent.getLongExtra(TaskListActivity.AVATAR_EDIT_TIME_EXTRA, 0);
+                mIsAssignedToLocation = intent.getBooleanExtra(TaskListActivity.IS_ASSIGNED_TO_LOCATION_EXTRA, false);
 
-
-                if (avatarPath != null && !avatarPath.isEmpty()){
-                    Bitmap avatar = BitmapFactory.decodeFile(avatarPath);
-                    mTaskAvatar.setImageBitmap(avatar);
+                if (mAvatarPath != null && !mAvatarPath.isEmpty()){
+                    mTaskAvatar.setBackgroundResource(R.mipmap.avatar_placeholder);
+                    Glide.with(this)
+                            .load(mAvatarPath)
+                            .signature(new StringSignature(Long.toString(mAvatarEditTime)))
+                            .placeholder(R.mipmap.avatar_placeholder)
+                            .crossFade()
+                            .into(mTaskAvatar);
                 }
 
                 break;
@@ -107,6 +136,8 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                 int defaultMaxTaskDuration = spd.getMaxTaskDuration();
                 mMaxTaskDurationEditText.setText(String.valueOf(defaultMaxTaskDuration));
                 mTaskFrequencySpinner.setSelection(0);
+                mEditLocationButton.setVisibility(View.GONE);
+                mDeleteLocationButton.setVisibility(View.GONE);
                 break;
         }
 
@@ -123,7 +154,47 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
             mCommentaryVoiceButton.setOnClickListener(this);
         }
 
+        if (savedInstanceState == null){
+            if (mIsAssignedToLocation){
+                mLatitude = intent.getDoubleExtra(TaskListActivity.LATITUDE_EXTRA, 0);
+                mLongitude = intent.getDoubleExtra(TaskListActivity.LONGITUDE_EXTRA, 0);
+                mMapPlaceholder.setVisibility(View.GONE);
+                loadMap();
+            } else {
+                mEditLocationButton.setVisibility(View.GONE);
+                mDeleteLocationButton.setVisibility(View.GONE);
+            }
+        } else {
+            mIsAssignedToLocation = savedInstanceState.getBoolean(TaskListActivity.IS_ASSIGNED_TO_LOCATION_EXTRA, false);
+            if (mIsAssignedToLocation){
+                mLatitude = savedInstanceState.getDouble(TaskListActivity.LATITUDE_EXTRA, 0);
+                mLongitude = savedInstanceState.getDouble(TaskListActivity.LONGITUDE_EXTRA, 0);
+                mMapPlaceholder.setVisibility(View.GONE);
+                loadMap();
+            }
+
+            mAvatarChanged = savedInstanceState.getBoolean(AVATAR_CHANGED_KEY, false);
+            if (mAvatarChanged){
+                Bitmap avatar = savedInstanceState.getParcelable(AVATAR_KEY);
+                mTaskAvatar.setImageBitmap(avatar);
+                mAvatarEditTime = savedInstanceState.getLong(TaskListActivity.AVATAR_EDIT_TIME_EXTRA, 0);
+            }
+        }
+
         mTaskAvatar.setOnClickListener(this);
+        mMapPlaceholder.setOnClickListener(this);
+        mEditLocationButton.setOnClickListener(this);
+        mDeleteLocationButton.setOnClickListener(this);
+
+        Tutorial.taskEditActivityTutorial(this);
+    }
+
+    private void loadMap() {
+        SupportMapFragment map = new SupportMapFragment();
+        getSupportFragmentManager().beginTransaction().replace(R.id.map_fragment_container, map, MAP_FRAGMENT_TAG).commitAllowingStateLoss();
+        map.getMapAsync(this);
+        mEditLocationButton.setVisibility(View.VISIBLE);
+        mDeleteLocationButton.setVisibility(View.VISIBLE);
     }
 
     private void startVoiceRecognitionActivity(int promptId)    {
@@ -143,7 +214,6 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
             public void onClick(View v) {
                 Intent taskData = new Intent();
                 String imageName = "";
-                String avatarPath;
 
 
                 String title = mTitleEditText.getText().toString();
@@ -159,9 +229,9 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                     mMaxTaskDurationEditText.setError(getString(R.string.duration_must_be_lower_than_frequency));
                     return;
                 }
-                BitmapDrawable avatarDrawable = (BitmapDrawable)mTaskAvatar.getDrawable();
 
-                if (avatarDrawable != null){
+                if (mAvatarChanged){
+                    BitmapDrawable avatarDrawable = (BitmapDrawable)mTaskAvatar.getDrawable();
                     Bitmap avatarBitmap = avatarDrawable.getBitmap();
 
                     switch (mRequestCode){
@@ -174,9 +244,7 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                             imageName = mTaskId + ".png";
                             break;
                     }
-                    avatarPath = FileIO.saveImage(avatarBitmap, imageName, EditTaskActivity.this);
-                } else {
-                    avatarPath = "";
+                    mAvatarPath = FileIO.saveImage(avatarBitmap, imageName, EditTaskActivity.this);
                 }
 
                 if (mRequestCode == EDIT_TASK_REQUEST){
@@ -186,7 +254,11 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                 taskData.putExtra(TaskListActivity.COMMENTARY_EXTRA, commentary);
                 taskData.putExtra(TaskListActivity.MAX_DURATION_EXTRA, maxDuration);
                 taskData.putExtra(TaskListActivity.TASK_FREQUENCY_EXTRA, taskFrequency);
-                taskData.putExtra(TaskListActivity.AVATAR_PATH_EXTRA, avatarPath);
+                taskData.putExtra(TaskListActivity.AVATAR_PATH_EXTRA, mAvatarPath);
+                taskData.putExtra(TaskListActivity.AVATAR_EDIT_TIME_EXTRA, mAvatarEditTime);
+                taskData.putExtra(TaskListActivity.LATITUDE_EXTRA, mLatitude);
+                taskData.putExtra(TaskListActivity.LONGITUDE_EXTRA, mLongitude);
+                taskData.putExtra(TaskListActivity.IS_ASSIGNED_TO_LOCATION_EXTRA, mIsAssignedToLocation);
 
                 setResult(RESULT_OK, taskData);
                 finish();
@@ -246,14 +318,17 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
         mMaxTaskDurationEditText = (TextInputEditText)findViewById(R.id.edit_text_max_task_duration);
         mTitleVoiceButton = (ImageButton) findViewById(R.id.edit_text_title_voice_recognition);
         mCommentaryVoiceButton = (ImageButton) findViewById(R.id.edit_text_commentary_voice_recognition);
+        mEditLocationButton = (ImageButton) findViewById(R.id.edit_location);
+        mDeleteLocationButton = (ImageButton) findViewById(R.id.delete_location);
         mTaskFrequencySpinner = (AppCompatSpinner) findViewById(R.id.spinner_task_exec_frequency);
         mTaskAvatar = (ImageView) findViewById(R.id.task_avatar);
-
+        mMapPlaceholder = (ImageView) findViewById(R.id.map_placeholder);
     }
 
     @Override
     public void onClick(View v) {
         buttonId = v.getId();
+        Intent intent;
         switch (buttonId){
             case R.id.edit_text_title_voice_recognition:
                 startVoiceRecognitionActivity(R.string.enter_title_voice_rec_prompt);
@@ -264,6 +339,30 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
             case R.id.task_avatar:
                 ImageSourcePickerDialog.newInstance(R.string.image_source_picker_dialog_title).show(getSupportFragmentManager(), getString(R.string.image_source_picker_dialog_title));
                 break;
+            case R.id.map_placeholder:
+                intent = new Intent(EditTaskActivity.this, TaskLocationSelectActivity.class);
+                intent.putExtra(TaskListActivity.IS_ASSIGNED_TO_LOCATION_EXTRA, false);
+                startActivityForResult(intent, SELECT_TASK_LOCATION_REQUEST);
+                break;
+            case R.id.edit_location:
+                intent = new Intent(EditTaskActivity.this, TaskLocationSelectActivity.class);
+                intent.putExtra(TaskListActivity.IS_ASSIGNED_TO_LOCATION_EXTRA, mIsAssignedToLocation);
+                intent.putExtra(TaskListActivity.LATITUDE_EXTRA, mLatitude);
+                intent.putExtra(TaskListActivity.LONGITUDE_EXTRA, mLongitude);
+                startActivityForResult(intent, SELECT_TASK_LOCATION_REQUEST);
+                break;
+            case R.id.delete_location:
+                mIsAssignedToLocation = false;
+                mMap = null;
+                mLatitude = 0;
+                mLongitude = 0;
+                SupportMapFragment map = (SupportMapFragment) getSupportFragmentManager().findFragmentByTag(MAP_FRAGMENT_TAG);
+                getSupportFragmentManager().beginTransaction().remove(map).commit();
+                mEditLocationButton.setVisibility(View.GONE);
+                mDeleteLocationButton.setVisibility(View.GONE);
+                mMapPlaceholder.setVisibility(View.VISIBLE);
+                break;
+
         }
 
     }
@@ -336,9 +435,65 @@ public class EditTaskActivity extends AppCompatActivity implements View.OnClickL
                 Bitmap resizedImage = Bitmap.createScaledBitmap(croppedImage, imageSize, imageSize, false);
 
                 mTaskAvatar.setImageBitmap(resizedImage);
+                mAvatarEditTime = System.currentTimeMillis();
+                mAvatarChanged = true;
+            }
+        }
+
+        if (requestCode == SELECT_TASK_LOCATION_REQUEST && resultCode == RESULT_OK){
+            mLatitude = data.getDoubleExtra(TaskListActivity.LATITUDE_EXTRA, 0);
+            mLongitude = data.getDoubleExtra(TaskListActivity.LONGITUDE_EXTRA, 0);
+            mIsAssignedToLocation = true;
+            LatLng taskLocation = new LatLng(mLatitude, mLongitude);
+            if (mMap == null){
+                loadMap();
+            } else {
+                mMap.clear();
+                mMap.addMarker(new MarkerOptions().position(taskLocation));
+                mMap.addCircle(new CircleOptions().center(taskLocation).radius(100).strokeWidth(5).strokeColor(0xa0ff3030));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(taskLocation, 15));
             }
         }
 
         super.onActivityResult(requestCode, resultCode, data);
     }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+        LatLng taskLocation = new LatLng(mLatitude, mLongitude);
+        mMap.addMarker(new MarkerOptions().position(taskLocation));
+        mMap.addCircle(new CircleOptions().center(taskLocation).radius(100).strokeWidth(5).strokeColor(0xa0ff3030));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(taskLocation, 15));
+        mMap.getUiSettings().setAllGesturesEnabled(false);
+        try {
+            mMap.setMyLocationEnabled(true);
+        } catch (SecurityException e){
+            e.printStackTrace();
+        }
+
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putBoolean(AVATAR_CHANGED_KEY, mAvatarChanged);
+        if (mAvatarChanged){
+            Bitmap avatar = ((BitmapDrawable) mTaskAvatar.getDrawable()).getBitmap();
+            outState.putParcelable(AVATAR_KEY, avatar);
+            outState.putLong(TaskListActivity.AVATAR_EDIT_TIME_EXTRA, mAvatarEditTime);
+        }
+
+        outState.putBoolean(TaskListActivity.IS_ASSIGNED_TO_LOCATION_EXTRA, mIsAssignedToLocation);
+        if (mIsAssignedToLocation){
+            outState.putDouble(TaskListActivity.LATITUDE_EXTRA, mLatitude);
+            outState.putDouble(TaskListActivity.LONGITUDE_EXTRA, mLongitude);
+        }
+
+
+    }
+
+
+
 }

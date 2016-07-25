@@ -5,12 +5,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.serhiyboiko.taskmanager.R;
+import com.serhiyboiko.taskmanager.utils.backup.BackupAgent;
 
 public class SplashScreenActivity extends AppCompatActivity {
 
@@ -43,7 +45,7 @@ public class SplashScreenActivity extends AppCompatActivity {
                 SplashScreenActivity.this.overridePendingTransition(0, R.anim.splash_activity_out);
             }
         };
-        mHandler.postDelayed(mRunnable, 2000);
+        mHandler.postDelayed(mRunnable, 1400);
     }
 
     @Override

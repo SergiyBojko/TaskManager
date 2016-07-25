@@ -23,7 +23,7 @@ public class TaskExecInfo extends RealmObject {
     }
 
     @NonNull
-    public static TaskExecInfo createTaskExecInfo(RealmIO realmIO, Task finishedTask) {
+    public static void createTaskExecInfo(RealmIO realmIO, Task finishedTask) {
         TaskExecInfo taskExecInfo;
         if (finishedTask.getTaskRestart() == null){
             //if task finished for first time create new statistics item
@@ -37,7 +37,6 @@ public class TaskExecInfo extends RealmObject {
             taskExecInfo.setDuration(finishedTask.getTimeSpend());
             //taskExecInfo = new TaskExecInfo(finishedTask.getTaskRestart().getTimeInMillis(), finishedTask.getTaskEnd().getTimeInMillis(), finishedTask.getTimeSpend());
         }
-        return taskExecInfo;
     }
 
     public long getTaskStart() {

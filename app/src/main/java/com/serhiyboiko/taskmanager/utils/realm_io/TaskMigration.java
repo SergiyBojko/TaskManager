@@ -33,6 +33,15 @@ public class TaskMigration implements RealmMigration {
             oldVersion++;
         }
 
+        if (oldVersion == 2){
+            schema.get("Task")
+                    .addField("mLastAvatarEditTime", long.class)
+                    .addField("mLatitude", double.class)
+                    .addField("mLongitude", double.class)
+                    .addField("mIsAssignedToLocation", boolean.class);
+            oldVersion++;
+        }
+
     }
 
     @Override
